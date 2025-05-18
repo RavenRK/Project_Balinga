@@ -11,32 +11,34 @@
 class UInputMappingContext;
 class UInputAction;
 
-UCLASS()
-class PROJECT_BALINGA_API ABasePlayer : public ACharacter
+UCLASS(Abstract)
+class PROJECT_BALINGA_API ABasePlayer : public APlayerController
 {
-	GENERATED_BODY()
-
-public:
-	ABasePlayer();
-
-protected:
-	virtual void BeginPlay() override;
-
+public: 
 	//input mapping context
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Ground")
 	UInputMappingContext* PlayerInputMappingContext_Ground;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Air")
 	UInputMappingContext* PlayerInputMappingContext_Air;
-	
+
 	//input actions
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Ground|Movement")
 	UInputAction* MoveAction;
-	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Ground|Movement")
+	UInputAction* JumpAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Ground|Movement")
+	UInputAction* LookAction;
+private:
+	UPROPERTY()	//store a ref of input component cast to enhancedinputComponent
+	UEnhancedInputComponent* EnhancedInputComponent = nullptr;
+	UPROPERTY()	//store a ref to pawn we control
+	ABasePlayer* PlayerCharacter = nullptr;
+
+protected:
+	virtual void OnPossess(APawn* aPawn) override;
+	virtual void OnUnPossess() override;
+
+	virtual void BeginPlay() override;
 	void Move(const FInputActionValue& Value);
-
-public:	
-	virtual void Tick(float DeltaTime) override;
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
 };

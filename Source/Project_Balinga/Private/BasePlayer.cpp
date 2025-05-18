@@ -6,11 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
-ABasePlayer::ABasePlayer()
-{
-	PrimaryActorTick.bCanEverTick = true;
 
-}
 void ABasePlayer::BeginPlay()
 {
 	Super::BeginPlay();
@@ -26,11 +22,6 @@ void ABasePlayer::Move(const FInputActionValue& Value)
 	const float DirectionValue = Value.Get<float>();
 	UE_LOG(LogTemp, Warning, TEXT("we working"));
 }
-void ABasePlayer::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
 
 void ABasePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -42,4 +33,27 @@ void ABasePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	}
 
 }
+void ABasePlayer::OnPossess(APawn* aPawn)
+{
+	Super::OnPossess(aPawn);
 
+	PlayerCharacter = Cast<ABasePlayer>(aPawn);
+	check(PlayerCharacter, Text("ABasePlayer derived classes should only posess ABasePlayer"));
+
+	EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
+	checkf(EnhancedInputComponent, TEXT("Unable to get referance to the EnhancedInputComponent"));
+
+	if (MoveAction)
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABasePlayer::HandleMove);
+
+	if (LookAction)
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABasePlayer::HandleLook);
+
+	if (JumpAction)
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABasePlayer::HandleJump);
+}
+
+void ABasePlayer::OnUnPossess()
+{
+
+}
