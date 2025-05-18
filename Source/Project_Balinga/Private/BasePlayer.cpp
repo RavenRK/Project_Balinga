@@ -24,11 +24,7 @@ void ABasePlayer::BeginPlay()
 void ABasePlayer::Move(const FInputActionValue& Value)
 {
 	const float DirectionValue = Value.Get<float>();
-
-	if (Controller && (DirectionValue != 0.f))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("we working"));
-	}
+	UE_LOG(LogTemp, Warning, TEXT("we working"));
 }
 void ABasePlayer::Tick(float DeltaTime)
 {
