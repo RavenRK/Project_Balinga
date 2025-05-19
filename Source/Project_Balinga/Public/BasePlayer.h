@@ -3,18 +3,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
+#include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
+
 #include "BasePlayer.generated.h"
 
 // Forward declarations
 class UInputMappingContext;
 class UInputAction;
+class AABaseCharacter;
 
 UCLASS(Abstract)
 class PROJECT_BALINGA_API ABasePlayer : public APlayerController
 {
-public: 
+public:
 	//input mapping context
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Ground")
 	UInputMappingContext* PlayerInputMappingContext_Ground;
@@ -29,16 +31,21 @@ public:
 	UInputAction* JumpAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Ground|Movement")
 	UInputAction* LookAction;
+
 private:
 	UPROPERTY()	//store a ref of input component cast to enhancedinputComponent
-	UEnhancedInputComponent* EnhancedInputComponent = nullptr;
+		UEnhancedInputComponent* EnhancedInputComponent = nullptr;
 	UPROPERTY()	//store a ref to pawn we control
-	ABasePlayer* PlayerCharacter = nullptr;
+		AABaseCharacter* PlayerCharacter = nullptr;
 
 protected:
 	virtual void OnPossess(APawn* aPawn) override;
 	virtual void OnUnPossess() override;
+	//virtual void BeginPlay() override;
 
-	virtual void BeginPlay() override;
 	void Move(const FInputActionValue& Value);
+	void Look(const FInputActionValue& Value);
+	void Jump(const FInputActionValue& Value);
+
+	GENERATED_BODY()
 };

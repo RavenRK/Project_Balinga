@@ -5,55 +5,57 @@
 #include "Components/InputComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "ABaseCharacter.h"
 
-
-void ABasePlayer::BeginPlay()
-{
-	Super::BeginPlay();
-	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-			Subsystem->AddMappingContext(PlayerInputMappingContext_Ground, 0);
-	}
-}
-
-void ABasePlayer::Move(const FInputActionValue& Value)
-{
-	const float DirectionValue = Value.Get<float>();
-	UE_LOG(LogTemp, Warning, TEXT("we working"));
-}
-
-void ABasePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
-	{
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABasePlayer::Move);
-	}
-
-}
 void ABasePlayer::OnPossess(APawn* aPawn)
 {
 	Super::OnPossess(aPawn);
 
-	PlayerCharacter = Cast<ABasePlayer>(aPawn);
-	check(PlayerCharacter, Text("ABasePlayer derived classes should only posess ABasePlayer"));
+	PlayerCharacter = Cast<AABaseCharacter>(aPawn);
+	checkf(PlayerCharacter, TEXT("ABasePlayer derived classes should only posess ABasePlayer"));
 
 	EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
 	checkf(EnhancedInputComponent, TEXT("Unable to get referance to the EnhancedInputComponent"));
 
-	if (MoveAction)
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABasePlayer::HandleMove);
+	TObjectPtr<UEnhancedInputLocalPlayerSubsystem> InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
+	checkf(PlayerInputMappingContext_Ground, TEXT("Unable to get reference to the EnhancedInputLocalPlayerSubsystem"));
 
-	if (LookAction)
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABasePlayer::HandleLook);
+	checkf(PlayerInputMappingContext_Ground, TEXT("InputMappingContent was not specified."));
+	InputSubsystem->AddMappingContext(PlayerInputMappingContext_Ground, 0);
 
-	if (JumpAction)
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABasePlayer::HandleJump);
+	if (MoveAction && LookAction && JumpAction)
+	{
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABasePlayer::Move);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABasePlayer::Look);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABasePlayer::Jump);
+	}
+	else {checkf(false, TEXT("One or more input actions were not specified."))}
 }
 
-void ABasePlayer::OnUnPossess()
+void ABasePlayer::Move(const FInputActionValue& Value)
 {
+	const FVector2D DirectionVector = Value.Get<FVector2D>();
+
+	PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorForwardVector(), DirectionVector.Y);
+	PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorRightVector(), DirectionVector.X);
 
 }
+
+void ABasePlayer::Look(const FInputActionValue& Value)
+{
+	const FVector2D LookAxis = Value.Get<FVector2D>();
+
+	AddYawInput(LookAxis.X);
+	AddPitchInput(LookAxis.Y);
+}
+
+void ABasePlayer::Jump(const FInputActionValue& Value)
+{
+	if (PlayerCharacter)
+	{
+		PlayerCharacter->UnCrouch();
+		PlayerCharacter->Jump();
+	}
+}
+void ABasePlayer::OnUnPossess() { EnhancedInputComponent->ClearActionBindings(); Super::OnUnPossess(); };
+
