@@ -4,16 +4,20 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "ABaseCharacter.generated.h"
+#include "BalingaBase.generated.h"
 
 UCLASS()
-class PROJECT_BALINGA_API AABaseCharacter : public ACharacter
+class ABalingaBase : public ACharacter
 {
-	GENERATED_BODY()
-
 public:
 	// Sets default values for this character's properties
-	AABaseCharacter();
+	ABalingaBase();
+
+	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"));
+	class UCameraComponent* Camera;
+
+	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"));
+	class USpringArmComponent* SpringArm;
 
 protected:
 	// Called when the game starts or when spawned
@@ -26,4 +30,6 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+private:
+	GENERATED_BODY()
 };
