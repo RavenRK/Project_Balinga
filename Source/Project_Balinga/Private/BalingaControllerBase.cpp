@@ -10,7 +10,7 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 	// Get a reference to the player's pawn
 	PlayerCharacter = Cast<ABalingaBase>(aPawn);
-	checkf(PlayerCharacter, TEXT("ABalingaController derived classes should only possess ATestCharacter derived pawns."));
+	checkf(PlayerCharacter, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
 
 	// Get a reference to the EnhancedInputComponent
 	EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
