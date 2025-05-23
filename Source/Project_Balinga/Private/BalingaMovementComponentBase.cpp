@@ -21,7 +21,7 @@ void UBalingaMovementComponentBase::PhysFly(float deltaTIme, int32 Iterations)
 	// Add root motion code here if we ever decide to use root motions
 
 	// Thrust is applied in the direction the character is facing
-	// Unsure how deceleration works
+	// Drag and gravity will decelerate this
 	if (safe_bFlapInput)
 	{
 		// actorForward only changes in the Z axis by default, we need to allow it to be changed in all during the fly mode
@@ -31,22 +31,23 @@ void UBalingaMovementComponentBase::PhysFly(float deltaTIme, int32 Iterations)
 		safe_bFlapInput = false;
 	}
 
+	// Change surfaceArea using angleOfAttack (Velocity vector compared to windVelocity vector)
 
-	safe_horizontalVelocity = FMath::Sqrt(FMath::Square(Velocity.X) + FMath::Square(Velocity.Y));
+	// Velocity is movement safe
+	FVector baseForce = ((safe_airDensity * FMath::Square(Velocity + safe_windVelocity)) / 2.0f) * safe_surfaceArea;
+		
+	// Lift is one of the perpendicular vectors to baseForce
+	// The greater the velocity, surfaceArea and airDensity the more lift and drag
+	FVector lift = baseForce * safe_liftScale; // Find out how to get the right perpendicular 3d vector
 
-	// baseForce and airFlowVelocity might need to become vectors, depending on how we calculate drag 
-	float baseForce = ((safe_airDensity * (safe_horizontalVelocity + safe_airflowVelocity)) / 2.0f) * safe_surfaceArea;
+	// Drag is parallel and negative to baseForce
+	FVector drag = baseForce * -1.0f * safe_dragScale;
 
-	// Need to somehow factor in angleOfAttack (actorForwardVector, might get rid of either one)
-	// The closer to the airFlowDirection the greater maybe. But then upwards aiming wouldn't lift you as much
-	float lift = baseForce * safe_liftScale;
+	Velocity += (lift / Mass) * deltaTIme;
 
-	float drag = baseForce * safe_dragScale;
+	Velocity += (drag / Mass) * deltaTIme;
 
-	Velocity += (lift / Mass) * FVector::UpVector * deltaTIme; // Lift is always applied upwards (change if we add changing gravity direction)
-
-	// What direction should drag apply in? Both horizontal axes? Only one? The one airFlowVelocity is referring to?
-	Velocity += (drag / Mass) * safe_actorForward * deltaTIme; 
+	// Apply gravity
 }
 
 void UBalingaMovementComponentBase::InitializeComponent()

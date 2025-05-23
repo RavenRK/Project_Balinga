@@ -32,6 +32,9 @@ private:
 	class FSavedMove_Balinga : FSavedMove_Character
 	{
 	public: 
+		bool saved_bFlapInput;
+		int8 safe_flapInitThrust;
+
 		float saved_thrustScale;
 		float saved_liftScale;
 		float saved_dragScale;
@@ -39,42 +42,32 @@ private:
 		int8 saved_angleOfAttack;
 		int8 saved_surfaceArea;
 		int8 saved_airDensity;
-		
-		bool saved_bFlapInput;
 
 		FVector saved_actorForwardVector;
-		FVector saved_horizontalMagnitude;
-
-		int8 safe_flapInitThrust;
-
-		
 	};
 
-	// Each force is an acceleration that we apply to the velocity of their corresponding axes
-	// They don't accumulate, the velocity accumulates them
+	bool safe_bFlapInput;
+	int8 safe_flapInitThrust;
+
+	// Each force is an acceleration multiplied by mass (f = ma) that we apply to the velocity of their corresponding axes
+	// They don't accumulate, the velocity accumulates their acceleration
 	// They're calculated each frame they're needed off of the flight parameters and other data
 	// They're floats because the magnitude of gravity (GravityZ) is
+
+	// Scales aren't calculated at all, we set them based on what we feel is good
 	float safe_thrustScale;
 	float safe_liftScale;
 	float safe_dragScale;
 
 	int8 safe_angleOfAttack;
 	int8 safe_surfaceArea;
-	float safe_airflowVelocity;
+	FVector safe_windVelocity;
 	float safe_airDensity;
 
-	bool safe_bFlapInput;
-
 	FVector safe_actorForward;
-	float safe_horizontalVelocity;
-
-	int8 safe_flapInitThrust;
-
-	// Set our own owner class so we can access the extra stuff we added to our Character child class (BalingaBase)
-	UPROPERTY() TObjectPtr<ABalingaBase> BalingaOwner; 
+	UPROPERTY() TObjectPtr<ABalingaBase> BalingaOwner; // Used to access Balinga things outside CharacterOwner
 
 	void PhysFly(float deltaTIme, int32 Iterations);
-
 
 protected:
 	virtual void InitializeComponent() override;
