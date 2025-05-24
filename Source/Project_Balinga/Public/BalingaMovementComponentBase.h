@@ -33,21 +33,27 @@ private:
 	{
 	public: 
 		bool saved_bFlapInput;
-		int8 safe_flapInitThrust;
-
-		float saved_thrustScale;
-		float saved_liftScale;
-		float saved_dragScale;
+		int saved_defaultInitThrustMagnitude;
+		int8 saved_initThrustMagnitude;
 
 		int8 saved_angleOfAttack;
 		int8 saved_surfaceArea;
 		int8 saved_airDensity;
 
-		FVector saved_actorForwardVector;
+		FVector saved_actorForward;
+		FVector saved_actorUp;
+
+	private:
+		virtual bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* InCharacter, float MaxDelta) const override;
+		virtual void Clear() override;
+		virtual uint8 GetCompressedFlags() const override;
+		virtual void SetMoveFor(ACharacter* C, float InDeltaTime, FVector const& NewAccel, FNetworkPredictionData_Client_Character& ClientData) override;
+		virtual void PrepMoveFor(ACharacter* C) override;
 	};
 
-	bool safe_bFlapInput;
-	int8 safe_flapInitThrust;
+	bool bFlapInput;
+	int8 defaultInitThrustMagnitude;
+	int8 initThrustMagnitude;
 
 	// Each force is an acceleration multiplied by mass (f = ma) that we apply to the velocity of their corresponding axes
 	// They don't accumulate, the velocity accumulates their acceleration
@@ -55,19 +61,20 @@ private:
 	// They're floats because the magnitude of gravity (GravityZ) is
 
 	// Scales aren't calculated at all, we set them based on what we feel is good
-	float safe_thrustScale;
-	float safe_liftScale;
-	float safe_dragScale;
+	float thrustScale;
+	float liftScale;
+	float dragScale;
 
-	int8 safe_angleOfAttack;
-	int8 safe_surfaceArea;
-	FVector safe_windVelocity;
-	float safe_airDensity;
+	int8 angleOfAttack;
+	int8 surfaceArea;
+	FVector windVelocity;
+	float airDensity;
 
-	FVector safe_actorForward;
 	UPROPERTY() TObjectPtr<ABalingaBase> BalingaOwner; // Used to access Balinga things outside CharacterOwner
+	FVector actorForward;
+	FVector actorUp;
 
-	void PhysFly(float deltaTIme, int32 Iterations);
+	void PhysFly(float deltaTime, int32 Iterations);
 
 protected:
 	virtual void InitializeComponent() override;
