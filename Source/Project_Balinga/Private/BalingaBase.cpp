@@ -23,7 +23,6 @@ ABalingaBase::ABalingaBase()
 	//GetCharacterMovement()->bOrientRotationToMovement = false;
 }
 
-// Called when the game starts or when spawned
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
@@ -31,16 +30,31 @@ void ABalingaBase::BeginPlay()
 	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
 }
 
-// Called every frame
 void ABalingaBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
-// Called to bind functionality to input
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+}
+
+float ABalingaBase::JumpTimer()
+{
+	JumpHeldTime = 0.0f;
+	//start a timer on input down (trying not to use tick )
+	return JumpHeldTime;
+}
+
+void ABalingaBase::BalingaJump()
+{
+	if (JumpHeldTime < 0.15f) 
+	{
+		//balinga jump 
+	}
+	else
+	{Jump();} //default jump
 }
 

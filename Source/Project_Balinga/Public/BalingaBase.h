@@ -20,16 +20,19 @@ public:
 	class USpringArmComponent* SpringArm;
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
+	//to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+
+	float JumpHeldTime = 0.0f;
+	float MaxJumpHoldTime = 1.5f;
+	float JumpTimer();
+	void BalingaJump();
 private:
 	GENERATED_BODY()
 };
