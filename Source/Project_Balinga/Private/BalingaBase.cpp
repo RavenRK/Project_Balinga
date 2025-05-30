@@ -6,10 +6,11 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
+
+
 // Sets default values
 ABalingaBase::ABalingaBase()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
@@ -19,6 +20,10 @@ ABalingaBase::ABalingaBase()
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(SpringArm);
 
+	AttackSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AttackSphere"));
+	AttackSphere->SetupAttachment(RootComponent);
+	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Enable when attacking
+
 	//bUseControllerRotationYaw = false;
 	//GetCharacterMovement()->bOrientRotationToMovement = false;
 }
@@ -26,6 +31,10 @@ ABalingaBase::ABalingaBase()
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	GetCharacterMovement()->JumpZVelocity = JumpVelocity;
+	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
+	GetCharacterMovement()->GravityScale = BaseGravityScale;
 
 	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
 }
@@ -38,23 +47,23 @@ void ABalingaBase::Tick(float DeltaTime)
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
 
-float ABalingaBase::JumpTimer()
-{
-	JumpHeldTime = 0.0f;
-	//start a timer on input down (trying not to use tick )
-	return JumpHeldTime;
-}
+void ABalingaBase::StartJump()	{Jump();	GetCharacterMovement()->GravityScale = JumpGravityScale;}
+void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravityScale;}
 
-void ABalingaBase::BalingaJump()
+// enable collision when attacking
+void ABalingaBase::Attack()
 {
-	if (JumpHeldTime < 0.15f) 
+	AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+// what to do after attack adn disable collision
+void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, const FHitResult& SweepResult)
+{
+	if (OtherActor && OtherActor != this)
 	{
-		//balinga jump 
+		//Apply damage or what ever
 	}
-	else
-	{Jump();} //default jump
+	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
-
