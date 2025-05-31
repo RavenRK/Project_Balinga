@@ -3,14 +3,19 @@
 
 #include "BalingaBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "BalingaMovement.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Logging/LogMacros.h"
 
 // Sets default values
-ABalingaBase::ABalingaBase()
+ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UBalingaMovement>(ACharacter::CharacterMovementComponentName))
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
 	SpringArm->SetupAttachment(RootComponent);
@@ -21,18 +26,61 @@ ABalingaBase::ABalingaBase()
 
 	//bUseControllerRotationYaw = false;
 	//GetCharacterMovement()->bOrientRotationToMovement = false;
+	
 }
 
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
-
-	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
 }
 
 void ABalingaBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+void ABalingaBase::CheckJumpInput(float DeltaTime)
+{
+	JumpCurrentCountPreJump = JumpCurrentCount;
+
+	if (BalingaMovement)
+	{
+		if (bPressedJump)
+		{
+			// If this is the first jump and we're already falling,
+			// then increment the JumpCount to compensate.
+			// Set up check for max coyote time and distance travelled since in air to decide coyote jump or flap
+			const bool bFirstJump = JumpCurrentCount == 0;
+			if (BalingaMovement->IsFalling() || BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
+			{
+				if (!BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
+				{
+					BalingaMovement->EnterFly();
+				}
+
+				// Should check if we can eventually
+				BalingaMovement->DoFlap();
+				UE_LOG(LogTemp, Warning, TEXT("FLAPPED"))
+				return;
+				
+				//JumpCurrentCount++;
+			}
+			
+			const bool bDidJump = CanJump() && BalingaMovement->DoJump(bClientUpdating);
+			if (bDidJump)
+			{
+				// Transition from not (actively) jumping to jumping.
+				if (!bWasJumping)
+				{
+					JumpCurrentCount++;
+					JumpForceTimeRemaining = GetJumpMaxHoldTime();
+					OnJumped();
+				}
+			}
+
+			bWasJumping = bDidJump;
+		}
+	}
 }
 
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -43,6 +91,7 @@ void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 float ABalingaBase::JumpTimer()
 {
+	UE_LOG(LogTemp, Warning, TEXT("print text timer "));
 	JumpHeldTime = 0.0f;
 	//start a timer on input down (trying not to use tick )
 	return JumpHeldTime;
@@ -50,11 +99,7 @@ float ABalingaBase::JumpTimer()
 
 void ABalingaBase::BalingaJump()
 {
-	if (JumpHeldTime < 0.15f) 
-	{
-		//balinga jump 
-	}
-	else
-	{Jump();} //default jump
+	UE_LOG(LogTemp, Warning, TEXT("JUMPED"));
+	Jump(); //default jump
 }
 
