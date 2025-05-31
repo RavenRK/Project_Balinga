@@ -23,16 +23,17 @@ public:
 	class USpringArmComponent* SpringArm;
 
 	//Ground parameters
-	UPROPERTY(EditAnywhere, Category = "Movement|Ground|Jump|GravityScale")
+	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
 	float BaseGravityScale = 9.8f;
-	UPROPERTY(EditAnywhere, Category = "Movement|Ground|Jump|GravityScale")
+	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
 	float JumpGravityScale = 4.9f;
-	UPROPERTY(EditAnywhere, Category = "Movement|Ground|Jump")
+	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump")
 	float JumpVelocity = 1200;
-	UPROPERTY(EditAnywhere, Category = "Movement|Ground|")
-	float MaxWalkSpeed = 600;
+
+	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|")
+	float MoveSpeed = 600;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category = "Movement|other|Attack")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category = "Move Balinga|other|Attack")
 	USphereComponent* AttackSphere;
 protected:
 	virtual void BeginPlay() override;

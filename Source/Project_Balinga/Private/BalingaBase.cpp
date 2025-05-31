@@ -33,7 +33,6 @@ void ABalingaBase::BeginPlay()
 	Super::BeginPlay();
 
 	GetCharacterMovement()->JumpZVelocity = JumpVelocity;
-	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 	GetCharacterMovement()->GravityScale = BaseGravityScale;
 
 	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
@@ -56,13 +55,14 @@ void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravity
 void ABalingaBase::Attack()
 {
 	AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-}
+} 
 // what to do after attack adn disable collision
 void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, const FHitResult& SweepResult)
 {
 	if (OtherActor && OtherActor != this)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Other Actor: "), OtherActor);
 		//Apply damage or what ever
 	}
 	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
