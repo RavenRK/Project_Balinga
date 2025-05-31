@@ -8,11 +8,12 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Logging/LogMacros.h"
 
+
+
 // Sets default values
 ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UBalingaMovement>(ACharacter::CharacterMovementComponentName))
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
@@ -24,6 +25,10 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(SpringArm);
 
+	AttackSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AttackSphere"));
+	AttackSphere->SetupAttachment(RootComponent);
+	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Enable when attacking
+
 	//bUseControllerRotationYaw = false;
 	//GetCharacterMovement()->bOrientRotationToMovement = false;
 	
@@ -32,6 +37,12 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	GetCharacterMovement()->JumpZVelocity = JumpVelocity;
+	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
+	GetCharacterMovement()->GravityScale = BaseGravityScale;
+
+	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
 }
 
 void ABalingaBase::Tick(float DeltaTime)
@@ -86,7 +97,6 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
 
 float ABalingaBase::JumpTimer()
@@ -96,10 +106,23 @@ float ABalingaBase::JumpTimer()
 	//start a timer on input down (trying not to use tick )
 	return JumpHeldTime;
 }
+void ABalingaBase::StartJump()	{Jump();	GetCharacterMovement()->GravityScale = JumpGravityScale;}
+void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravityScale;}
 
-void ABalingaBase::BalingaJump()
+// enable collision when attacking
+void ABalingaBase::Attack()
 {
 	UE_LOG(LogTemp, Warning, TEXT("JUMPED"));
 	Jump(); //default jump
+	AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
-
+// what to do after attack adn disable collision
+void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, const FHitResult& SweepResult)
+{
+	if (OtherActor && OtherActor != this)
+	{
+		//Apply damage or what ever
+	}
+	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}

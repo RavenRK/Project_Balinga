@@ -40,6 +40,10 @@ protected:
 	void JumpTimer();
 	void BalingaJump();
 
+	void StartJump(const FInputActionValue& InputActionValue);
+	void EndJump(const FInputActionValue& InputActionValue);
+	void Attack(const FInputActionValue& InputActionValue);
+	//void HandleToggleSprint();
 private:
 	GENERATED_BODY()
 

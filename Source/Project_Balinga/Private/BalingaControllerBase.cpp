@@ -9,7 +9,7 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 {
 	Super::OnPossess(aPawn);
 
-	#pragma region GetReferences
+	#pragma region GetReferencesAndChecks
 		//ref to player's pawn
 		PlayerCharacter = Cast<ABalingaBase>(aPawn);
 		checkf(PlayerCharacter, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
@@ -34,44 +34,39 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 	{
 		//ground inputActions
 		EnhInputComponent->BindAction(ActionMove, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Move);
-		EnhInputComponent->BindAction(ActionLook, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
+		EnhInputComponent->BindAction(ActionJump, ETriggerEvent::Started, this, &ABalingaControllerBase::StartJump);
+		EnhInputComponent->BindAction(ActionJump, ETriggerEvent::Completed, this, &ABalingaControllerBase::EndJump);
 
-		//note might use ongoing its called every frame while the action is pressed
-		EnhInputComponent->BindAction(ActionJump, ETriggerEvent::Started, this, &ABalingaControllerBase::JumpTimer);
-		EnhInputComponent->BindAction(ActionJump, ETriggerEvent::Completed, this, &ABalingaControllerBase::BalingaJump);
+		//other 
+		EnhInputComponent->BindAction(ActionMove, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
+		EnhInputComponent->BindAction(ActionLook, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
 	}
 	else   {checkf(false, TEXT("One or more input actions were not specified."));}
 }
-void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
-{
-	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
-	if (PlayerCharacter)
-	{
-		PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorForwardVector(), MovementVector.Y);
-		PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorRightVector(), MovementVector.X);
-	}
-}
+	#pragma region OtherFunc
+
 void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 {
 	const FVector2D LookAxisVector = InputActionValue.Get<FVector2D>();
 	AddYawInput(LookAxisVector.X);
 	AddPitchInput(LookAxisVector.Y);
 }
-
-	#pragma region jumpFunc
-
-void ABalingaControllerBase::JumpTimer()
-{
-	if (PlayerCharacter) PlayerCharacter->JumpTimer();
-}
-
-void ABalingaControllerBase::BalingaJump()
-{
-	if (PlayerCharacter)PlayerCharacter->BalingaJump();
-}
-
+void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) { if (PlayerCharacter) PlayerCharacter->Attack(); }
 #pragma endregion
+	#pragma region GroundFunc
+void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
+{
+	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
+	if (PlayerCharacter)
+	{
 
+		PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorForwardVector(), MovementVector.Y);
+		PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorRightVector(), MovementVector.X);
+	}
+}
+void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)	{if (PlayerCharacter) PlayerCharacter->StartJump();}
+void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)		{if (PlayerCharacter) PlayerCharacter->EndJump();  }
+#pragma endregion
 
 //void ABalingaControllerBase::HandleToggleSprint(){}
 void ABalingaControllerBase::OnUnPossess()
