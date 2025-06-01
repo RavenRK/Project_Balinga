@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "BalingaBase.h"
+#include "DrawDebugHelpers.h"
+
 #include "BalingaMovement.generated.h"
 
 // Similar to EMovemementMode in EngineTypes.h, none and max are there out of convention

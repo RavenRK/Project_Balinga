@@ -38,8 +38,8 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 		EnhInputComponent->BindAction(ActionJump, ETriggerEvent::Completed, this, &ABalingaControllerBase::EndJump);
 
 		//other 
-		EnhInputComponent->BindAction(ActionMove, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
 		EnhInputComponent->BindAction(ActionLook, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
+		EnhInputComponent->BindAction(ActionAttack, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
 	}
 	else   {checkf(false, TEXT("One or more input actions were not specified."));}
 }
@@ -51,8 +51,10 @@ void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 	AddYawInput(LookAxisVector.X);
 	AddPitchInput(LookAxisVector.Y);
 }
-void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) { if (PlayerCharacter) PlayerCharacter->Attack(); }
+void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) 
+{ if (PlayerCharacter) PlayerCharacter->TryAttack(); }
 #pragma endregion
+
 	#pragma region GroundFunc
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {

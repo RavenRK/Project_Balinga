@@ -6,9 +6,10 @@
 #include "BalingaMovement.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+
+#include "DrawDebugHelpers.h"
+
 #include "Logging/LogMacros.h"
-
-
 
 // Sets default values
 ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
@@ -27,21 +28,16 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 
 	AttackSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AttackSphere"));
 	AttackSphere->SetupAttachment(RootComponent);
-	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Enable when attacking
-
-	//bUseControllerRotationYaw = false;
-	//GetCharacterMovement()->bOrientRotationToMovement = false;
-	
+	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Enable when attacking	
 }
 
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	GetCharacterMovement()->JumpZVelocity = JumpVelocity;
-	GetCharacterMovement()->GravityScale = BaseGravityScale;
-
-	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	BalingaMovement->JumpZVelocity = JumpVelocity;
+	BalingaMovement->GravityScale = BaseGravityScale;
+	BalingaMovement->GetNavAgentPropertiesRef().bCanCrouch = true;
 }
 
 void ABalingaBase::Tick(float DeltaTime)
@@ -94,33 +90,36 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 }
 
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-}
+{Super::SetupPlayerInputComponent(PlayerInputComponent);}
 
-float ABalingaBase::JumpTimer()
-{
-	UE_LOG(LogTemp, Warning, TEXT("print text timer "));
-	JumpHeldTime = 0.0f;
-	//start a timer on input down (trying not to use tick )
-	return JumpHeldTime;
-}
+// Jumping functions
 void ABalingaBase::StartJump()	{Jump();	GetCharacterMovement()->GravityScale = JumpGravityScale;}
 void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravityScale;}
 
-// enable collision when attacking
-void ABalingaBase::Attack()
+// Attack functions
+void ABalingaBase::TryAttack()
 {
-	UE_LOG(LogTemp, Warning, TEXT("JUMPED"));
-	Jump(); //default jump
+	if (bCanAttack)
+	{
+		OnAttackOverlap(AttackSphere, nullptr, FHitResult());
+	}
+	DrawDebugSphere(
+		GetWorld(),
+		AttackSphere->GetComponentLocation(),   // Location
+		100,                  // Radius
+		12,                   // Segments
+		FColor::Red,          // Color
+		false,                // Persistent lines
+		2.0f                  // Lifetime
+	);
 	AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 } 
-// what to do after attack adn disable collision
-void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, const FHitResult& SweepResult)
+void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, const FHitResult& SweepResult)
 {
 	if (OtherActor && OtherActor != this)
 	{
+
+
 		UE_LOG(LogTemp, Warning, TEXT("Other Actor: "), OtherActor);
 		//Apply damage or what ever
 	}

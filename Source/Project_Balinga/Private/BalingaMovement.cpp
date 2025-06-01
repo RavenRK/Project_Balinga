@@ -4,9 +4,7 @@
 
 
 
-UBalingaMovement::UBalingaMovement()
-{
-}
+UBalingaMovement::UBalingaMovement(){}
 
 // Check if we're in the given custom movement mode
 

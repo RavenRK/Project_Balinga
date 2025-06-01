@@ -27,9 +27,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|Ground|Actions")
 	TObjectPtr<UInputAction> ActionMove{ nullptr };
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|Ground|Actions")
-	TObjectPtr<UInputAction> ActionLook{ nullptr };
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|Ground|Actions")
 	TObjectPtr<UInputAction> ActionJump{ nullptr };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|other|Actions")
+	TObjectPtr<UInputAction> ActionLook{ nullptr };
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|other|Actions")
+	TObjectPtr<UInputAction> ActionAttack{ nullptr };
 
 protected:
 	virtual void OnPossess(APawn* aPawn) override;
@@ -37,17 +40,12 @@ protected:
 	
 	void Move(const FInputActionValue& InputActionValue);
 	void Look(const FInputActionValue& InputActionValue);
-	void JumpTimer();
-	void BalingaJump();
 
 	void StartJump(const FInputActionValue& InputActionValue);
 	void EndJump(const FInputActionValue& InputActionValue);
 	void Attack(const FInputActionValue& InputActionValue);
-	//void HandleToggleSprint();
 private:
 	GENERATED_BODY()
-
-	// Might change these names
 
 	// Stores ref to one of our parent class', AActor's, InputComponent cast to an EnhInputComponent
 	UPROPERTY()
@@ -56,8 +54,6 @@ private:
 	// Stores ref to the player's pawn
 	UPROPERTY()
 	TObjectPtr<ABalingaBase> PlayerCharacter{ nullptr };
-
-	//jump variable
  
 
 };
