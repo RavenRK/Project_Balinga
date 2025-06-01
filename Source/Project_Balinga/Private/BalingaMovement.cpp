@@ -79,37 +79,32 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	// The greater the velocity, surfaceArea and airDensity the more lift and drag
 	// Velocity is movement safe
 	// We can combine wind vectors if there are multiple acting on balinga at the same time
-	FVector baseForce = ((airDensity * (Velocity + windVelocity).GetAbs() / 2.0f)) * surfaceArea;
+	FVector baseForce = ((airDensity * FMath::Square((Velocity - windVelocity).GetAbs()) / 2.0f)) * surfaceArea;
 	
 	actorUp = CharacterOwner->GetActorUpVector();
 	
 	// Lift is always applied in the same perpendicular vector: from balinga's perspective that vector is upwards
 	// (Finish explaining) If the bird is normally lift is applied on the z axis, if it's rotated to the right lift acts on the x or y axis,
 	// So we take the magnitude of baseForce and just apply it to the normalised up vector
+	// Lift should not be based off of the velocity caused by thrust
 	FVector lift = (baseForce.X + baseForce.Y + baseForce.Z) * actorUp * liftScale; 
 	FVector liftAcceleration = (lift / Mass) * deltaTime;
 	Velocity += liftAcceleration;
 
-	// Drag is parallel and negative to baseForce
-	FVector drag = (baseForce.X + baseForce.Y + baseForce.Z) * Velocity.GetSafeNormal() * -1.0f * dragScale;
+	const FVector Gravity = -GetGravityDirection() * GetGravityZ();
+	Velocity += Gravity * deltaTime;
+
+	// Drag is parallel and negative to baseForce, applied last so it can oppose everything
+	// The closer the normalised velocity is to the player's z or x 
+
+	FVector flowDirection = (Velocity - windVelocity).GetSafeNormal();
+	FVector drag = (baseForce.X + baseForce.Y + baseForce.Z) * flowDirection *  ((1.1 - FMath::Cos(FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(flowDirection, CharacterOwner->GetActorForwardVector()))))) * 1) * -1.0f * dragScale;
 	FVector dragAcceleration = (drag / Mass) * deltaTime;
 	Velocity += dragAcceleration;
 
-	const FVector Gravity = -GetGravityDirection() * GetGravityZ();
-
-	Velocity += Gravity * deltaTime;
-
-	UE_LOG(LogTemp, Log, TEXT("Lift: %s"), *lift.ToString());
-	UE_LOG(LogTemp, Log, TEXT("Drag: %s"), *drag.ToString());
-
 	// Applies input acceleration
-	// Will probably need to change some variables inside this function
+	// Use acceleration to change rotation probably
 	// CalcVelocity(deltaTime, 0.0f, false, 0.0f);
-
-	FVector position = CharacterOwner->GetActorLocation();
-	float vlogScale = 1;
-
-
 
 	Iterations++;
 	bJustTeleported = false;
@@ -134,12 +129,18 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 		Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation) / deltaTime;
 	}
 
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + dragAcceleration * vlogScale, FColor::Red, TEXT("Drag acceleration"));
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + Gravity * vlogScale, FColor::Blue , TEXT("Gravity acceleration"));
+	FVector position = CharacterOwner->GetActorLocation();
+	float vlogScale = 1;
+
 	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + actorForward * thrustScale, FColor::Green, TEXT("Thrust acceleration"));
+	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + dragAcceleration * vlogScale, FColor::Red, TEXT("Drag acceleration"));
+	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + liftAcceleration * vlogScale, FColor::Yellow, TEXT("Lift acceleration"));
+	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + Gravity * vlogScale, FColor::Blue , TEXT("Gravity acceleration"));
 	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + (Velocity - liftAcceleration - dragAcceleration - Gravity) * vlogScale, FColor::Purple, TEXT("Other acceleration"));
 	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + baseForce, FColor::Cyan, TEXT("Base force"));
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + liftAcceleration * vlogScale, FColor::Yellow, TEXT("Lift acceleration"));
+
+	GEngine->AddOnScreenDebugMessage( - 1, 0.1, FColor::White, *Velocity.ToString());
+
 }
 
 void UBalingaMovement::InitializeComponent()
