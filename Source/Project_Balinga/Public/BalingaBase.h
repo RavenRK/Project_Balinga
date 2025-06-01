@@ -6,8 +6,9 @@
 #include "GameFramework/Character.h"
 #include "Components/SphereComponent.h"
 
-#include "BalingaBase.generated.h"
+#include "BaseItem.h"
 
+#include "BalingaBase.generated.h"
 
 UCLASS()
 class ABalingaBase : public ACharacter
@@ -18,7 +19,8 @@ public:
 	//ABalingaBase();
 	ABalingaBase(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement) class UBalingaMovement* BalingaMovement;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement) 
+	class UBalingaMovement* BalingaMovement;
 
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"));
 	class UCameraComponent* Camera;
@@ -28,7 +30,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Move Balinga|other|Attack")
 	class USphereComponent* AttackSphere;
-
+	
 	//Ground parameters
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
 	float BaseGravityScale = 9.8f;
@@ -39,6 +41,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|")
 	float MoveSpeed = 600;
 	
+
+
 	//other parameters
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float AttackCooldown = 1.0f;
@@ -51,7 +55,6 @@ protected:
 
 public:	
 	virtual void Tick(float DeltaTime) override;
-
 	virtual void CheckJumpInput(float DeltaTime) override;
 
 	//to bind functionality to input
@@ -59,8 +62,20 @@ public:
 
 	void StartJump();
 	void EndJump();
+
 	void TryAttack();
-	void OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,const FHitResult& SweepResult);
+	void AttackCD();	//CD = Cooldown
+
+	UFUNCTION()
+	void OnAttackOverlap(UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+	void PickUpItem(ABaseItem* Item);
+
 private:
 	GENERATED_BODY()
 };
