@@ -15,8 +15,7 @@ class ABalingaBase : public ACharacter
 	typedef ACharacter Super;
 
 public:
-	// Sets default values for this character's properties
-	ABalingaBase();
+	//ABalingaBase();
 	ABalingaBase(const FObjectInitializer& ObjectInitializer);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement) class UBalingaMovement* BalingaMovement;
@@ -27,6 +26,9 @@ public:
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"));
 	class USpringArmComponent* SpringArm;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Move Balinga|other|Attack")
+	class USphereComponent* AttackSphere;
+
 	//Ground parameters
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
 	float BaseGravityScale = 9.8f;
@@ -34,12 +36,16 @@ public:
 	float JumpGravityScale = 4.9f;
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump")
 	float JumpVelocity = 1200;
-
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|")
 	float MoveSpeed = 600;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category = "Move Balinga|other|Attack")
-	USphereComponent* AttackSphere;
+	//other parameters
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float AttackCooldown = 1.0f;
+	bool bCanAttack = true;
+
+	FTimerHandle AttackCooldownTimer;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -51,16 +57,10 @@ public:
 	//to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	float JumpHeldTime = 0.0f;
-	float MaxJumpHoldTime = 1.5f;
-	float JumpTimer();
-	void BalingaJump();
-
 	void StartJump();
 	void EndJump();
-	void Attack();
-	void OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, const FHitResult& SweepResult);
+	void TryAttack();
+	void OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,const FHitResult& SweepResult);
 private:
 	GENERATED_BODY()
 };
