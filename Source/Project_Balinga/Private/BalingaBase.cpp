@@ -28,7 +28,8 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 
 	AttackSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AttackSphere"));
 	AttackSphere->SetupAttachment(RootComponent);
-	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Enable when attacking	
+	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AttackSphere->SetGenerateOverlapEvents(true);
 }
 
 void ABalingaBase::BeginPlay()
@@ -38,6 +39,8 @@ void ABalingaBase::BeginPlay()
 	BalingaMovement->JumpZVelocity = JumpVelocity;
 	BalingaMovement->GravityScale = BaseGravityScale;
 	BalingaMovement->GetNavAgentPropertiesRef().bCanCrouch = true;
+
+	AttackSphere->OnComponentBeginOverlap.AddDynamic(this, &ABalingaBase::OnAttackOverlap);
 }
 
 void ABalingaBase::Tick(float DeltaTime)
@@ -101,27 +104,36 @@ void ABalingaBase::TryAttack()
 {
 	if (bCanAttack)
 	{
-		OnAttackOverlap(AttackSphere, nullptr, FHitResult());
+		AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		OnAttackOverlap(nullptr, nullptr, nullptr, 0, false, FHitResult());
+		bCanAttack = false;
+		GetWorld()->GetTimerManager().SetTimer
+		(
+			AttackCooldownTimer,		//Timercooldown Timer
+			this,						
+			&ABalingaBase::AttackCD,
+			AttackCooldown, 
+			false
+		);
 	}
-	DrawDebugSphere(
-		GetWorld(),
-		AttackSphere->GetComponentLocation(),   // Location
-		100,                  // Radius
-		12,                   // Segments
-		FColor::Red,          // Color
-		false,                // Persistent lines
-		2.0f                  // Lifetime
-	);
-	AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-} 
-void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, const FHitResult& SweepResult)
+}
+void ABalingaBase::AttackCD() { bCanAttack = true; }
+
+void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	AttackSphere->SetHiddenInGame(false);
 	if (OtherActor && OtherActor != this)
 	{
-
-
-		UE_LOG(LogTemp, Warning, TEXT("Other Actor: "), OtherActor);
-		//Apply damage or what ever
+		PickUpItem(Cast<ABaseItem>(OtherActor));
 	}
+
 	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
+
+void ABalingaBase::PickUpItem(ABaseItem* Item)
+{
+	if (!Item) return;
+
+	Item->AttachToComponent(AttackSphere, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+}
+
