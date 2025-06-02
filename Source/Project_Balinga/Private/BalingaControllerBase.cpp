@@ -30,16 +30,18 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 	InputSubsystem->AddMappingContext(GroundInputMapping, 0);
 
 	// Bind actions to bindings
-	if (ActionMove && ActionLook && ActionJump)
+	if (MoveAction && LookAction && JumpAction)
 	{
 		//ground inputActions
-		EnhInputComponent->BindAction(ActionMove, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Move);
-		EnhInputComponent->BindAction(ActionJump, ETriggerEvent::Started, this, &ABalingaControllerBase::StartJump);
-		EnhInputComponent->BindAction(ActionJump, ETriggerEvent::Completed, this, &ABalingaControllerBase::EndJump);
+		EnhInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Move);
+		EnhInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ABalingaControllerBase::StartJump);
+		EnhInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ABalingaControllerBase::EndJump);
 
 		//other 
-		EnhInputComponent->BindAction(ActionLook, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
-		EnhInputComponent->BindAction(ActionAttack, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
+		EnhInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
+		EnhInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
+		EnhInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &ABalingaControllerBase::DropItem);
+
 	}
 	else   {checkf(false, TEXT("One or more input actions were not specified."));}
 }
@@ -53,8 +55,13 @@ void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 }
 void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) 
 { if (PlayerCharacter) PlayerCharacter->TryAttack(); }
-#pragma endregion
 
+void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue)
+{
+	if (PlayerCharacter) PlayerCharacter->DropItem();
+}
+
+#pragma endregion
 	#pragma region GroundFunc
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {

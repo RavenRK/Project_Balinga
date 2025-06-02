@@ -11,6 +11,7 @@
 class ABalingaBase;
 class UInputAction;
 class UInputMappingContext;
+class ABaseItem;
 struct FInputActionValue;
 
 UCLASS(Abstract)
@@ -25,14 +26,16 @@ public:
 
 		//	<< Input Action >>
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|Ground|Actions")
-	TObjectPtr<UInputAction> ActionMove{ nullptr };
+	TObjectPtr<UInputAction> MoveAction{ nullptr };
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|Ground|Actions")
-	TObjectPtr<UInputAction> ActionJump{ nullptr };
+	TObjectPtr<UInputAction> JumpAction{ nullptr };
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|other|Actions")
-	TObjectPtr<UInputAction> ActionLook{ nullptr };
+	TObjectPtr<UInputAction> LookAction{ nullptr };
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|other|Actions")
-	TObjectPtr<UInputAction> ActionAttack{ nullptr };
+	TObjectPtr<UInputAction> AttackAction{ nullptr };
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|other|Actions")
+	TObjectPtr<UInputAction> DropAction{ nullptr };
 
 protected:
 	virtual void OnPossess(APawn* aPawn) override;
@@ -44,6 +47,8 @@ protected:
 	void StartJump(const FInputActionValue& InputActionValue);
 	void EndJump(const FInputActionValue& InputActionValue);
 	void Attack(const FInputActionValue& InputActionValue);
+	void DropItem(const FInputActionValue& InputActionValue);
+
 private:
 	GENERATED_BODY()
 

@@ -4,7 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/SphereComponent.h"
+
 #include "BaseItem.generated.h"
+
+class USphereComponent;
 
 UCLASS()
 class PROJECT_BALINGA_API ABaseItem : public AActor
@@ -14,7 +18,11 @@ class PROJECT_BALINGA_API ABaseItem : public AActor
 public:	
 	ABaseItem();
 
-	bool canUse = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class USphereComponent* SphereColli;
+
+	void ItemPickUp(USceneComponent* AttachTo);
+	void ItemDrop();
 protected:
 	virtual void BeginPlay() override;
 
