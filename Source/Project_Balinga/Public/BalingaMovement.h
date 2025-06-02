@@ -38,9 +38,11 @@ private:
 
 	// Editor scales don't change during runtime, we set them based on what we feel is good
 	UPROPERTY(EditDefaultsOnly) float defaultThrustScale;
+	UPROPERTY(EditDefaultsOnly) float defaultDirectionalScaleScale;
 	UPROPERTY(EditDefaultsOnly) float defaultDragScale;
 	UPROPERTY(EditDefaultsOnly) float defaultLiftScale;
 	float thrustScale;
+	float directionalScaleScale;
 	float dragScale;
 	float liftScale;
 
@@ -82,6 +84,7 @@ private:
 
 	public:
 		float saved_thrustScale;
+		float saved_directionalScaleScale;
 		float saved_dragScale;
 		float saved_liftScale;
 		// Gravity is not ours
@@ -93,7 +96,7 @@ private:
 
 		FVector saved_actorForward;
 		FVector saved_actorUp;
-
+		
 
 	private:
 		virtual bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* InCharacter, float MaxDelta) const override;

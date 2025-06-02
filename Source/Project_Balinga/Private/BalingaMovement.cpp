@@ -14,6 +14,7 @@ void UBalingaMovement::EnterFly()
 	CharacterOwner->bUseControllerRotationRoll = true;
 
 	thrustScale = defaultThrustScale;
+	directionalScaleScale = defaultDirectionalScaleScale;
 	dragScale = defaultDragScale;
 	liftScale = defaultLiftScale;
 
@@ -73,12 +74,13 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	// Add root motion code here if we ever decide to use root motions
 
 	// Change surfaceArea using angleOfAttack (Velocity vector compared to windVelocity vector)
+	FVector flowDirection = (Velocity - windVelocity).GetSafeNormal();
+	float directionalDot = FVector::DotProduct(flowDirection, CharacterOwner->GetActorForwardVector());
+	float directionalScale = ((1 * directionalScaleScale - FMath::Abs(directionalDot)));
 
 	// The greater the velocity, surfaceArea and airDensity the more lift and drag
 	// Velocity is movement safe
-	// We can combine wind vectors if there are multiple acting on balinga at the same time
-	FVector baseForce = ((airDensity * FMath::Square((Velocity - windVelocity).GetAbs()) / 2.0f)) * surfaceArea;
-	
+	FVector baseForce = ((airDensity * FMath::Square((Velocity - windVelocity).GetAbs()) / 2.0f)) * surfaceArea * directionalScale;
 	actorUp = CharacterOwner->GetActorUpVector();
 	
 	// Lift is always applied in the same perpendicular vector: from balinga's perspective that vector is upwards
@@ -95,8 +97,7 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	// Drag is parallel and negative to baseForce, applied last so it can oppose everything
 	// The closer the normalised velocity is to the player's z or x 
 
-	FVector flowDirection = (Velocity - windVelocity).GetSafeNormal();
-	FVector drag = (baseForce.X + baseForce.Y + baseForce.Z) * flowDirection *  ((1.1 - FMath::Cos(FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(flowDirection, CharacterOwner->GetActorForwardVector()))))) * 1) * -1.0f * dragScale;
+	FVector drag = (baseForce.X + baseForce.Y + baseForce.Z) * flowDirection * -1.0f * dragScale;
 	FVector dragAcceleration = (drag / Mass) * deltaTime;
 	Velocity += dragAcceleration;
 
@@ -137,8 +138,11 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + (Velocity - liftAcceleration - dragAcceleration - Gravity) * vlogScale, FColor::Purple, TEXT("Other acceleration"));
 	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + baseForce, FColor::Cyan, TEXT("Base force"));
 
-	GEngine->AddOnScreenDebugMessage( - 1, 0.1, FColor::White, *Velocity.ToString());
+	GEngine->AddOnScreenDebugMessage(2, 100.0f, FColor(255, 0, 0), FString::Printf(TEXT("Velocity: [%s]"), *Velocity.ToString()));
+	GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Yellow, FString::Printf(TEXT("Drag directional multipier: [%s]"), *FString::SanitizeFloat(directionalScale)));
 
+	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Lift", FVector2D(GetWorld()->GetTimeSeconds(), liftAcceleration.Size()));
+	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Drag", FVector2D(GetWorld()->GetTimeSeconds(), dragAcceleration.Size()));	
 }
 
 void UBalingaMovement::InitializeComponent()
@@ -189,6 +193,10 @@ bool UBalingaMovement::FSavedMove_Balinga::CanCombineWith(const FSavedMovePtr& N
 	{
 		return false;
 	}
+	if (saved_directionalScaleScale != NewBalingaMove->saved_directionalScaleScale)
+	{
+		return false;
+	}
 	if (saved_dragScale != NewBalingaMove->saved_dragScale)
 	{
 		return false;
@@ -227,6 +235,7 @@ void UBalingaMovement::FSavedMove_Balinga::Clear()
 	Super::Clear();
 
 	saved_thrustScale = 1;
+	saved_directionalScaleScale = 1;
 	saved_dragScale = 1;
 	saved_liftScale = 1;
 	// gravityScale is not ours
@@ -246,6 +255,7 @@ void UBalingaMovement::FSavedMove_Balinga::SetMoveFor(ACharacter* C, float InDel
 	UBalingaMovement* BalingaMovement = Cast<UBalingaMovement>(C->GetCharacterMovement());
 
 	saved_thrustScale = BalingaMovement->thrustScale;
+	saved_directionalScaleScale = BalingaMovement->directionalScaleScale;
 	saved_dragScale = BalingaMovement->dragScale;
 	saved_liftScale = BalingaMovement->liftScale;
 	// gravityScale is not ours
@@ -265,6 +275,7 @@ void UBalingaMovement::FSavedMove_Balinga::PrepMoveFor(ACharacter* C)
 	UBalingaMovement* BalingaMovement = Cast<UBalingaMovement>(C->GetCharacterMovement());
 
 	BalingaMovement->thrustScale = saved_thrustScale;
+	BalingaMovement->directionalScaleScale = saved_directionalScaleScale;
 	BalingaMovement->dragScale = saved_dragScale;
 	BalingaMovement->liftScale = saved_liftScale;
 	// gravity is not ourse
