@@ -14,9 +14,14 @@ void UBalingaMovement::EnterFly()
 	CharacterOwner->bUseControllerRotationRoll = true;
 
 	thrustScale = defaultThrustScale;
-	directionalScaleScale = defaultDirectionalScaleScale;
+
 	dragScale = defaultDragScale;
+	minDragDirectionalScale = defaultMinDragDirectionalScale;
+	dragDirectionalScaleScale = defaultDragDirectionalScaleScale;
+
 	liftScale = defaultLiftScale;
+	minLiftDirectionalScale = defaultMinLiftDirectionalScale;
+	liftDirectionalScaleScale = defaultLiftDirectionalScaleScale;
 
 	angleOfAttack = defaultAngleOfAttack;
 	surfaceArea = defaultSurfaceArea;
@@ -38,14 +43,8 @@ void UBalingaMovement::DoFlap()
 	// Drag and gravity will decelerate this
 	if (CharacterOwner->bPressedJump)
 	{
-		// actorForward only changes in the Z axis by default, we need to allow it to be changed in all during the fly mode
-		// We should change the angle of the player to the camera angle basically immediately upon entering flight (for the first time)
-		// Subsequent changes in angle will be handled differently, with a weaker rotational velocity
-
 		actorForward = CharacterOwner->GetActorForwardVector();
 		Velocity += ((thrustScale * actorForward) / Mass);
-		UE_LOG(LogTemp, Log, TEXT("Forward vector: %s"), *actorForward.ToString());
-		UE_LOG(LogTemp, Log, TEXT("Thrust scale: %s"), *FString::SanitizeFloat(thrustScale));
 
 		CharacterOwner->bPressedJump = false;
 	}
@@ -70,40 +69,42 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	{
 		return;
 	}
-
-	// Add root motion code here if we ever decide to use root motions
-
-	// Change surfaceArea using angleOfAttack (Velocity vector compared to windVelocity vector)
-	FVector flowDirection = (Velocity - windVelocity).GetSafeNormal();
-	float directionalDot = FVector::DotProduct(flowDirection, CharacterOwner->GetActorForwardVector());
-	float directionalScale = ((1 * directionalScaleScale - FMath::Abs(directionalDot)));
-
-	// The greater the velocity, surfaceArea and airDensity the more lift and drag
-	// Velocity is movement safe
-	FVector baseForce = ((airDensity * FMath::Square((Velocity - windVelocity).GetAbs()) / 2.0f)) * surfaceArea * directionalScale;
-	actorUp = CharacterOwner->GetActorUpVector();
 	
-	// Lift is always applied in the same perpendicular vector: from balinga's perspective that vector is upwards
-	// (Finish explaining) If the bird is normally lift is applied on the z axis, if it's rotated to the right lift acts on the x or y axis,
-	// So we take the magnitude of baseForce and just apply it to the normalised up vector
-	// Lift should not be based off of the velocity caused by thrust
-	FVector lift = (baseForce.X + baseForce.Y + baseForce.Z) * actorUp * liftScale; 
+	FVector flowDirection = (Velocity - windVelocity).GetSafeNormal();
+	FVector directionalDifference = (CharacterOwner->GetActorForwardVector() - flowDirection).GetSafeNormal();
+
+	FVector baseForce = ((airDensity * FMath::Square((Velocity + windVelocity).GetAbs()) / 2.0f)) * surfaceArea;
+	actorUp = CharacterOwner->GetActorUpVector();
+
+	// Lift is applied perpendicular to the velocity's direction and the player's right direction (different from just up direction)
+	FVector lift = (baseForce.X + baseForce.Y + baseForce.Z) * FVector::CrossProduct(flowDirection, CharacterOwner->GetActorRightVector()) * liftScale;
+	float liftDirectionalDot = FVector::DotProduct(directionalDifference, lift.GetSafeNormal());
+	float liftDirectionalScale = liftDirectionalDot * liftDirectionalScaleScale;
+	liftDirectionalScale = FMath::Max(liftDirectionalScale, minLiftDirectionalScale);
+	lift *= liftDirectionalScale;
 	FVector liftAcceleration = (lift / Mass) * deltaTime;
 	Velocity += liftAcceleration;
 
 	const FVector Gravity = -GetGravityDirection() * GetGravityZ();
 	Velocity += Gravity * deltaTime;
 
-	// Drag is parallel and negative to baseForce, applied last so it can oppose everything
-	// The closer the normalised velocity is to the player's z or x 
-
+	// Drag is parallel and negative to velocity, applied last so it can oppose everything
 	FVector drag = (baseForce.X + baseForce.Y + baseForce.Z) * flowDirection * -1.0f * dragScale;
+	float dragDirectionalDot = FVector::DotProduct(directionalDifference, drag.GetSafeNormal());
+	float dragDirectionalScale = dragDirectionalDot * dragDirectionalScaleScale;
+	dragDirectionalScale = FMath::Max(dragDirectionalScale, minDragDirectionalScale);
+	drag *= dragDirectionalScale;
 	FVector dragAcceleration = (drag / Mass) * deltaTime;
 	Velocity += dragAcceleration;
 
 	// Applies input acceleration
 	// Use acceleration to change rotation probably
 	// CalcVelocity(deltaTime, 0.0f, false, 0.0f);
+
+	if (Velocity.Size() > 9999)
+	{
+	//	Velocity = 9999 * Velocity.GetSafeNormal();
+	}
 
 	Iterations++;
 	bJustTeleported = false;
@@ -112,10 +113,8 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	FQuat OldRotation = UpdatedComponent->GetComponentRotation().Quaternion();
 	FHitResult Hit(1.f);
 	FVector Adjusted = Velocity * deltaTime;
-	UE_LOG(LogTemp, Log, TEXT("Velocity1: %s"), *Velocity.ToString());
 	// Actually moves and rotates everything
 	SafeMoveUpdatedComponent(Adjusted, OldRotation, true, Hit); 
-	UE_LOG(LogTemp, Log, TEXT("Velocity2: %s"), *Velocity.ToString());
 
 	if (Hit.Time < 1.f)
 	{
@@ -134,15 +133,22 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + actorForward * thrustScale, FColor::Green, TEXT("Thrust acceleration"));
 	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + dragAcceleration * vlogScale, FColor::Red, TEXT("Drag acceleration"));
 	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + liftAcceleration * vlogScale, FColor::Yellow, TEXT("Lift acceleration"));
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + Gravity * vlogScale, FColor::Blue , TEXT("Gravity acceleration"));
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + (Velocity - liftAcceleration - dragAcceleration - Gravity) * vlogScale, FColor::Purple, TEXT("Other acceleration"));
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + baseForce, FColor::Cyan, TEXT("Base force"));
+	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + directionalDifference * 100, FColor::Purple, TEXT("Directional difference"));
 
 	GEngine->AddOnScreenDebugMessage(2, 100.0f, FColor(255, 0, 0), FString::Printf(TEXT("Velocity: [%s]"), *Velocity.ToString()));
-	GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Yellow, FString::Printf(TEXT("Drag directional multipier: [%s]"), *FString::SanitizeFloat(directionalScale)));
+	GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Yellow, FString::Printf(TEXT("Drag directional scale: [%s]"), *FString::SanitizeFloat(dragDirectionalScale)));
+	GEngine->AddOnScreenDebugMessage(4, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift directional scale: [%s]"), *FString::SanitizeFloat(liftDirectionalScale)));
 
 	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Lift", FVector2D(GetWorld()->GetTimeSeconds(), liftAcceleration.Size()));
 	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Drag", FVector2D(GetWorld()->GetTimeSeconds(), dragAcceleration.Size()));	
+
+	UE_LOG(LogTemp, Log, TEXT("Directional difference: %s"), *directionalDifference.ToString());
+
+	UE_LOG(LogTemp, Log, TEXT("Drag direction: %s"), *drag.GetSafeNormal().ToString());
+	UE_LOG(LogTemp, Log, TEXT("Drag dot: %s"), *FString::SanitizeFloat(dragDirectionalDot));
+
+	UE_LOG(LogTemp, Log, TEXT("Lift direction: %s"), *lift.GetSafeNormal().ToString());
+	UE_LOG(LogTemp, Log, TEXT("Lift dot: %s"), *FString::SanitizeFloat(liftDirectionalDot));
 }
 
 void UBalingaMovement::InitializeComponent()
@@ -193,15 +199,29 @@ bool UBalingaMovement::FSavedMove_Balinga::CanCombineWith(const FSavedMovePtr& N
 	{
 		return false;
 	}
-	if (saved_directionalScaleScale != NewBalingaMove->saved_directionalScaleScale)
-	{
-		return false;
-	}
+
 	if (saved_dragScale != NewBalingaMove->saved_dragScale)
 	{
 		return false;
 	}
+	if (saved_minDragDirectionalScale != NewBalingaMove->saved_minDragDirectionalScale)
+	{
+		return false;
+	}
+	if (saved_dragDirectionalScaleScale != NewBalingaMove->saved_dragDirectionalScaleScale)
+	{
+		return false;
+	}
+
 	if (saved_liftScale != NewBalingaMove->saved_liftScale)
+	{
+		return false;
+	}
+	if (saved_minLiftDirectionalScale != NewBalingaMove->saved_minLiftDirectionalScale)
+	{
+		return false;
+	}
+	if (saved_liftDirectionalScaleScale != NewBalingaMove->saved_liftDirectionalScaleScale)
 	{
 		return false;
 	}
@@ -235,9 +255,14 @@ void UBalingaMovement::FSavedMove_Balinga::Clear()
 	Super::Clear();
 
 	saved_thrustScale = 1;
-	saved_directionalScaleScale = 1;
+
 	saved_dragScale = 1;
+	saved_minDragDirectionalScale;
+	saved_dragDirectionalScaleScale = 1;
+
 	saved_liftScale = 1;
+	saved_minLiftDirectionalScale;
+	saved_liftDirectionalScaleScale = 1;
 	// gravityScale is not ours
 
 	saved_angleOfAttack = 1;
@@ -255,10 +280,14 @@ void UBalingaMovement::FSavedMove_Balinga::SetMoveFor(ACharacter* C, float InDel
 	UBalingaMovement* BalingaMovement = Cast<UBalingaMovement>(C->GetCharacterMovement());
 
 	saved_thrustScale = BalingaMovement->thrustScale;
-	saved_directionalScaleScale = BalingaMovement->directionalScaleScale;
+
 	saved_dragScale = BalingaMovement->dragScale;
+	saved_minDragDirectionalScale = BalingaMovement->minDragDirectionalScale;
+	saved_dragDirectionalScaleScale = BalingaMovement->dragDirectionalScaleScale;
+
 	saved_liftScale = BalingaMovement->liftScale;
-	// gravityScale is not ours
+	saved_minLiftDirectionalScale = BalingaMovement->minLiftDirectionalScale;
+	saved_liftDirectionalScaleScale = BalingaMovement->liftDirectionalScaleScale;
 
 	saved_angleOfAttack = BalingaMovement->angleOfAttack;
 	saved_surfaceArea = BalingaMovement->surfaceArea;
@@ -275,9 +304,14 @@ void UBalingaMovement::FSavedMove_Balinga::PrepMoveFor(ACharacter* C)
 	UBalingaMovement* BalingaMovement = Cast<UBalingaMovement>(C->GetCharacterMovement());
 
 	BalingaMovement->thrustScale = saved_thrustScale;
-	BalingaMovement->directionalScaleScale = saved_directionalScaleScale;
+
 	BalingaMovement->dragScale = saved_dragScale;
+	BalingaMovement->minDragDirectionalScale = saved_minDragDirectionalScale;
+	BalingaMovement->dragDirectionalScaleScale = saved_dragDirectionalScaleScale;
+
 	BalingaMovement->liftScale = saved_liftScale;
+	BalingaMovement->minLiftDirectionalScale = saved_minLiftDirectionalScale;
+	BalingaMovement->liftDirectionalScaleScale = saved_liftDirectionalScaleScale;
 	// gravity is not ourse
 
 	BalingaMovement->angleOfAttack = saved_angleOfAttack;

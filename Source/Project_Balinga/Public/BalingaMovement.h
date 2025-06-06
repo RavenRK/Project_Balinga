@@ -38,13 +38,21 @@ private:
 
 	// Editor scales don't change during runtime, we set them based on what we feel is good
 	UPROPERTY(EditDefaultsOnly) float defaultThrustScale;
-	UPROPERTY(EditDefaultsOnly) float defaultDirectionalScaleScale;
-	UPROPERTY(EditDefaultsOnly) float defaultDragScale;
-	UPROPERTY(EditDefaultsOnly) float defaultLiftScale;
 	float thrustScale;
-	float directionalScaleScale;
+
+	UPROPERTY(EditDefaultsOnly) float defaultDragScale;
+	UPROPERTY(EditDefaultsOnly) float defaultMinDragDirectionalScale;
+	UPROPERTY(EditDefaultsOnly) float defaultDragDirectionalScaleScale;
 	float dragScale;
+	float minDragDirectionalScale;
+	float dragDirectionalScaleScale;
+
+	UPROPERTY(EditDefaultsOnly) float defaultLiftScale;
+	UPROPERTY(EditDefaultsOnly) float defaultMinLiftDirectionalScale;
+	UPROPERTY(EditDefaultsOnly) float defaultLiftDirectionalScaleScale;
 	float liftScale;
+	float minLiftDirectionalScale;
+	float liftDirectionalScaleScale;
 
 	UPROPERTY(EditDefaultsOnly) float defaultAngleOfAttack;
 	UPROPERTY(EditDefaultsOnly) float defaultSurfaceArea;
@@ -84,9 +92,14 @@ private:
 
 	public:
 		float saved_thrustScale;
-		float saved_directionalScaleScale;
+
 		float saved_dragScale;
+		float saved_minDragDirectionalScale;
+		float saved_dragDirectionalScaleScale;
+
 		float saved_liftScale;
+		float saved_minLiftDirectionalScale;
+		float saved_liftDirectionalScaleScale;
 		// Gravity is not ours
 
 		float saved_angleOfAttack;

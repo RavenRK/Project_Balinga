@@ -56,8 +56,6 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 	{
 		if (bPressedJump)
 		{
-			// If this is the first jump and we're already falling,
-			// then increment the JumpCount to compensate.
 			// Set up check for max coyote time and distance travelled since in air to decide coyote jump or flap
 			const bool bFirstJump = JumpCurrentCount == 0;
 			if (BalingaMovement->IsFalling() || BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
@@ -96,7 +94,15 @@ void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 {Super::SetupPlayerInputComponent(PlayerInputComponent);}
 
 // Jumping functions
-void ABalingaBase::StartJump()	{Jump();	GetCharacterMovement()->GravityScale = JumpGravityScale;}
+void ABalingaBase::StartJump()	
+{
+	Jump();
+
+	if (!BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
+	{
+		GetCharacterMovement()->GravityScale = JumpGravityScale;
+	}
+}
 void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravityScale;}
 
 // Attack functions
