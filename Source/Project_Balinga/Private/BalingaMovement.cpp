@@ -70,12 +70,12 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 		return;
 	}
 	
-	FVector flowDirection = (Velocity - windVelocity).GetSafeNormal();
-	FVector directionalDifference = (CharacterOwner->GetActorForwardVector() - flowDirection).GetSafeNormal();
-
 	FVector baseForce = ((airDensity * FMath::Square((Velocity + windVelocity).GetAbs()) / 2.0f)) * surfaceArea;
 	actorUp = CharacterOwner->GetActorUpVector();
 
+	FVector flowDirection = (Velocity - windVelocity).GetSafeNormal();
+	FVector directionalDifference = (CharacterOwner->GetActorForwardVector() - flowDirection).GetSafeNormal();
+	
 	// Lift is applied perpendicular to the velocity's direction and the player's right direction (different from just up direction)
 	FVector lift = (baseForce.X + baseForce.Y + baseForce.Z) * FVector::CrossProduct(flowDirection, CharacterOwner->GetActorRightVector()) * liftScale;
 	float liftDirectionalDot = FVector::DotProduct(directionalDifference, lift.GetSafeNormal());
@@ -137,7 +137,7 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 
 	GEngine->AddOnScreenDebugMessage(2, 100.0f, FColor(255, 0, 0), FString::Printf(TEXT("Velocity: [%s]"), *Velocity.ToString()));
 	GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Yellow, FString::Printf(TEXT("Drag directional scale: [%s]"), *FString::SanitizeFloat(dragDirectionalScale)));
-	GEngine->AddOnScreenDebugMessage(4, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift directional scale: [%s]"), *FString::SanitizeFloat(liftDirectionalScale)));
+	GEngine->AddOnScreenDebugMessage(4, 100.0f, FColor::Green, FString::Printf(TEXT("Lift directional scale: [%s]"), *FString::SanitizeFloat(liftDirectionalScale)));
 
 	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Lift", FVector2D(GetWorld()->GetTimeSeconds(), liftAcceleration.Size()));
 	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Drag", FVector2D(GetWorld()->GetTimeSeconds(), dragAcceleration.Size()));	
