@@ -93,7 +93,7 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {Super::SetupPlayerInputComponent(PlayerInputComponent);}
 
-// Jumping functions
+#pragma region JumpFunctions
 void ABalingaBase::StartJump()	
 {
 	Jump();
@@ -104,14 +104,27 @@ void ABalingaBase::StartJump()
 	}
 }
 void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravityScale;}
+#pragma endregion
 
-// Attack functions
+	#pragma region AttackFunctions
+
+	//enable AttackSphere and start CD
 void ABalingaBase::TryAttack()
 {
 	if (bCanAttack)
 	{
 		AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		OnAttackOverlap(nullptr, nullptr, nullptr, 0, false, FHitResult());
+
+		TArray<AActor*> OverlappingActors;
+		AttackSphere->GetOverlappingActors(OverlappingActors);
+
+		for (AActor* Actor : OverlappingActors)
+		{
+			OnAttackOverlap(nullptr, Actor, nullptr, 0, false, FHitResult());
+		}
+
+		AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 		bCanAttack = false;
 		GetWorld()->GetTimerManager().SetTimer
 		(
@@ -122,24 +135,49 @@ void ABalingaBase::TryAttack()
 			false
 		);
 	}
-}
-void ABalingaBase::AttackCD() { bCanAttack = true; }
-
-void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	AttackSphere->SetHiddenInGame(false);
-	if (OtherActor && OtherActor != this)
+	else
 	{
-		PickUpItem(Cast<ABaseItem>(OtherActor));
+		GEngine->AddOnScreenDebugMessage(1, 2, FColor::Cyan, FString("on CD attack"));
 	}
+}
+void ABalingaBase::AttackCD() 
+{ 
+	GEngine->AddOnScreenDebugMessage(2, 2, FColor::Cyan, FString("can Attack"));
+	bCanAttack = true;
+}
 
-	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor && OtherActor != this && HeldItem == nullptr)
+	{
+		if (OtherActor->IsA(ABaseItem::StaticClass()))
+		{
+			ABaseItem* Item = Cast<ABaseItem>(OtherActor);
+			if (Item)
+			{
+				PickUpItem(Item);
+			}
+		}
+	}
 }
 
 void ABalingaBase::PickUpItem(ABaseItem* Item)
 {
 	if (!Item) return;
 
-	Item->AttachToComponent(AttackSphere, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	Item->ItemPickUp(AttackSphere);
+	HeldItem = Item;
 }
+
+void ABalingaBase::DropItem()
+{
+	if (!HeldItem) return;
+
+	HeldItem->ItemDrop();
+	HeldItem = nullptr;
+}
+
+#pragma endregion
 

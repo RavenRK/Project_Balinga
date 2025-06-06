@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Components/SphereComponent.h"
 
+#include "Components/SphereComponent.h"
 #include "BaseItem.h"
 
 #include "BalingaBase.generated.h"
@@ -31,6 +31,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Move Balinga|other|Attack")
 	class USphereComponent* AttackSphere;
 	
+
+
 	//Ground parameters
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
 	float BaseGravityScale = 9.8f;
@@ -40,16 +42,8 @@ public:
 	float JumpVelocity = 1200;
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|")
 	float MoveSpeed = 600;
-	
-
-
-	//other parameters
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-	float AttackCooldown = 1.0f;
-	bool bCanAttack = true;
 
 	FTimerHandle AttackCooldownTimer;
-
 protected:
 	virtual void BeginPlay() override;
 
@@ -63,18 +57,35 @@ public:
 	void StartJump();
 	void EndJump();
 
+	#pragma region AttackFunctions
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float AttackCooldown = 1.0f;
+
+	bool bCanAttack = true;
+
 	void TryAttack();
 	void AttackCD();	//CD = Cooldown
 
+
 	UFUNCTION()
-	void OnAttackOverlap(UPrimitiveComponent* OverlappedComponent,
+	void OnAttackOverlap
+	(
+		UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex,
 		bool bFromSweep,
-		const FHitResult& SweepResult);
+		const FHitResult& SweepResult
+	);
 
+	UPROPERTY()
+	ABaseItem* HeldItem = nullptr;
+
+	void DropItem();
 	void PickUpItem(ABaseItem* Item);
+
+#pragma endregion
 
 private:
 	GENERATED_BODY()
