@@ -9,35 +9,32 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 {
 	Super::OnPossess(aPawn);
 
-	#pragma region GetReferencesAndChecks
-		//ref to player's pawn
-		PlayerCharacter = Cast<ABalingaBase>(aPawn);
-		checkf(PlayerCharacter, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
+	PlayerCharacter = Cast<ABalingaBase>(aPawn);
+	checkf(PlayerCharacter, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
 
-		//ref EnhInputComponent
-		EnhInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
-		checkf(EnhInputComponent, TEXT("Unable to get reference to the EnhancedInputComponent."));
+	EnhInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
+	checkf(EnhInputComponent, TEXT("Unable to get reference to the EnhancedInputComponent."));
 
-		//ref local player subsystem
-		TObjectPtr<UEnhancedInputLocalPlayerSubsystem> InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
-		checkf(InputSubsystem, TEXT("Unable to get reference to the EnhancedInputLocalPlayerSubsystem"));
+	TObjectPtr<UEnhancedInputLocalPlayerSubsystem> InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
+	checkf(InputSubsystem, TEXT("Unable to get reference to the EnhancedInputLocalPlayerSubsystem"));
 
-		// Add InputMappingContext within InputSubsystem
-		checkf(GroundInputMapping, TEXT("InputMappingContent was not specified."));
-	#pragma endregion
+	checkf(BaseInputMapping, TEXT("InputMappingContent was not specified."));
 
 	InputSubsystem->ClearAllMappings(); // Shouldn't do this if you have multiple mapping contexts active at the same time
-	InputSubsystem->AddMappingContext(GroundInputMapping, 0);
+	InputSubsystem->AddMappingContext(BaseInputMapping, 0);
 
 	// Bind actions to bindings
-	if (MoveAction && LookAction && JumpAction)
+	if (MoveAction && LookAction && JumpAction && LandAction)
 	{
-		//ground inputActions
+		// Ground
 		EnhInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Move);
 		EnhInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ABalingaControllerBase::StartJump);
 		EnhInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ABalingaControllerBase::EndJump);
 
-		//other 
+		// In Air / Flight
+		EnhInputComponent->BindAction(LandAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Land);
+
+		// Abilities 
 		EnhInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
 		EnhInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
 		EnhInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &ABalingaControllerBase::DropItem);
@@ -45,7 +42,8 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 	}
 	else   {checkf(false, TEXT("One or more input actions were not specified."));}
 }
-	#pragma region OtherFunc
+
+#pragma region Abilities
 
 void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 {
@@ -54,7 +52,9 @@ void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 	AddPitchInput(LookAxisVector.Y);
 }
 void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) 
-{ if (PlayerCharacter) PlayerCharacter->TryAttack(); }
+{ 
+	if (PlayerCharacter) PlayerCharacter->TryAttack(); 
+}
 
 void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue)
 {
@@ -62,7 +62,8 @@ void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue
 }
 
 #pragma endregion
-	#pragma region GroundFunc
+
+#pragma region Movement
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {
 	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
@@ -74,9 +75,11 @@ void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 }
 void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)	{if (PlayerCharacter) PlayerCharacter->StartJump();}
 void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)		{if (PlayerCharacter) PlayerCharacter->EndJump();  }
+
+void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) { if (PlayerCharacter) PlayerCharacter->Land(); }
+
 #pragma endregion
 
-//void ABalingaControllerBase::HandleToggleSprint(){}
 void ABalingaControllerBase::OnUnPossess()
 {
 	// Unbinds actions after unpossessing

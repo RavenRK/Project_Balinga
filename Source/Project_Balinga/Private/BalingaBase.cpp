@@ -48,6 +48,11 @@ void ABalingaBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
+
+void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{Super::SetupPlayerInputComponent(PlayerInputComponent);}
+
+#pragma region GroundedMovement
 void ABalingaBase::CheckJumpInput(float DeltaTime)
 {
 	JumpCurrentCountPreJump = JumpCurrentCount;
@@ -89,11 +94,6 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 		}
 	}
 }
-
-void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{Super::SetupPlayerInputComponent(PlayerInputComponent);}
-
-#pragma region JumpFunctions
 void ABalingaBase::StartJump()	
 {
 	Jump();
@@ -105,10 +105,13 @@ void ABalingaBase::StartJump()
 }
 void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravityScale;}
 #pragma endregion
+void ABalingaBase::Land()
+{
+	BalingaMovement->LandPressed();
+}
 
-	#pragma region AttackFunctions
-
-	//enable AttackSphere and start CD
+#pragma region Abilities
+//enable AttackSphere and start CD
 void ABalingaBase::TryAttack()
 {
 	if (bCanAttack)
@@ -145,8 +148,6 @@ void ABalingaBase::AttackCD()
 	GEngine->AddOnScreenDebugMessage(2, 2, FColor::Cyan, FString("can Attack"));
 	bCanAttack = true;
 }
-
-
 void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -170,7 +171,6 @@ void ABalingaBase::PickUpItem(ABaseItem* Item)
 	Item->ItemPickUp(AttackSphere);
 	HeldItem = Item;
 }
-
 void ABalingaBase::DropItem()
 {
 	if (!HeldItem) return;
@@ -178,6 +178,5 @@ void ABalingaBase::DropItem()
 	HeldItem->ItemDrop();
 	HeldItem = nullptr;
 }
-
 #pragma endregion
 

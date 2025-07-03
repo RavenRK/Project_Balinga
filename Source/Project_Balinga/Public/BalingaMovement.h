@@ -30,6 +30,8 @@ public:
 private:
 	GENERATED_BODY()
 
+	bool bWantsToLand;
+
 	// Each force is an acceleration multiplied by mass (f = ma) that we apply to the velocity of their corresponding axes
 	// They don't accumulate, the velocity accumulates their acceleration
 	// They're calculated each frame they're needed off of the flight parameters and other data
@@ -41,18 +43,18 @@ private:
 	float thrustScale;
 
 	UPROPERTY(EditDefaultsOnly) float defaultDragScale;
-	UPROPERTY(EditDefaultsOnly) float defaultMinDragDirectionalScale;
-	UPROPERTY(EditDefaultsOnly) float defaultDragDirectionalScaleScale;
+	UPROPERTY(EditDefaultsOnly) float defaultMinDragDesiredScale;
+	UPROPERTY(EditDefaultsOnly) float defaultDragDesiredScaleScale;
 	float dragScale;
-	float minDragDirectionalScale;
-	float dragDirectionalScaleScale;
+	float minDragDesiredScale;
+	float dragDesiredScaleScale;
 
 	UPROPERTY(EditDefaultsOnly) float defaultLiftScale;
-	UPROPERTY(EditDefaultsOnly) float defaultMinLiftDirectionalScale;
-	UPROPERTY(EditDefaultsOnly) float defaultLiftDirectionalScaleScale;
+	UPROPERTY(EditDefaultsOnly) float defaultMinLiftDesiredScale;
+	UPROPERTY(EditDefaultsOnly) float defaultLiftDesiredScaleScale;
 	float liftScale;
-	float minLiftDirectionalScale;
-	float liftDirectionalScaleScale;
+	float minLiftDesiredScale;
+	float liftDesiredScaleScale;
 
 	UPROPERTY(EditDefaultsOnly) float defaultAngleOfAttack;
 	UPROPERTY(EditDefaultsOnly) float defaultSurfaceArea;
@@ -73,11 +75,13 @@ public:
 	void EnterFly();
 	void ExitFly();
 	void DoFlap();
+	void LandPressed();
+	void LandReleased();
 
 protected:
 	virtual void InitializeComponent() override;
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
-	virtual void OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation, const FVector& OldVelocity) override;
+	virtual void UpdateCharacterStateBeforeMovement(float DeltaSeconds) override;
 
 public:
 	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
@@ -91,15 +95,31 @@ private:
 		typedef FSavedMove_Character Super;
 
 	public:
+
+		enum CompressedFlags
+		{
+			FLAG_JumpPressed = 0x01,	// Jump pressed
+			FLAG_WantsToCrouch = 0x02,	// Wants to crouch
+			FLAG_Reserved_1 = 0x04,	// Reserved for future use
+			FLAG_Reserved_2 = 0x08,	// Reserved for future use
+			// Remaining bit masks are available for custom flags.
+			FLAG_Land = 0x10,
+			FLAG_Custom_1 = 0x20,
+			FLAG_Custom_2 = 0x40,
+			FLAG_Custom_3 = 0x80,
+		};
+
+		bool saved_bWantsToLand;
+
 		float saved_thrustScale;
 
 		float saved_dragScale;
-		float saved_minDragDirectionalScale;
-		float saved_dragDirectionalScaleScale;
+		float saved_minDragDesiredScale;
+		float saved_dragDesiredScaleScale;
 
 		float saved_liftScale;
-		float saved_minLiftDirectionalScale;
-		float saved_liftDirectionalScaleScale;
+		float saved_minLiftDesiredScale;
+		float saved_liftDesiredScaleScale;
 		// Gravity is not ours
 
 		float saved_angleOfAttack;

@@ -57,6 +57,8 @@ public:
 	void StartJump();
 	void EndJump();
 
+	void Land();
+
 	#pragma region AttackFunctions
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
