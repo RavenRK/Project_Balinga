@@ -2,8 +2,6 @@
 #include "Logging/LogMacros.h"
 #include "VisualLogger/VisualLogger.h"
 
-
-
 UBalingaMovement::UBalingaMovement()
 {
 
