@@ -41,11 +41,14 @@ void ABalingaBase::BeginPlay()
 	BalingaMovement->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	AttackSphere->OnComponentBeginOverlap.AddDynamic(this, &ABalingaBase::OnAttackOverlap);
+	
+	
 }
 
 void ABalingaBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
 }
 
 
@@ -71,7 +74,7 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 				}
 
 				// Should check if we can eventually
-				BalingaMovement->DoFlap();
+				BalingaMovement->FlapPressed();
 				UE_LOG(LogTemp, Warning, TEXT("FLAPPED"))
 				return;
 				

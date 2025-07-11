@@ -68,13 +68,20 @@ private:
 	UPROPERTY() TObjectPtr<ABalingaBase> BalingaOwner; // Used to access Balinga things outside CharacterOwner
 	FVector actorForward;
 	FVector actorUp;
+	FVector lastDesiredDifference;
+	FVector clampedDesiredDifference;
+	
+	bool bisClamped;
+
+	FVector smoothVelocity;
+	UPROPERTY(EditDefaultsOnly) FVector smoothTime;
 
 	void PhysFly(float deltaTime, int32 Iterations);
 
 public:
 	void EnterFly();
 	void ExitFly();
-	void DoFlap();
+	void FlapPressed();
 	void LandPressed();
 	void LandReleased();
 

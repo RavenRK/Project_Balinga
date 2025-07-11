@@ -1,20 +1,19 @@
 #include "BalingaMovement.h"
 #include "Logging/LogMacros.h"
 #include "VisualLogger/VisualLogger.h"
-
+#include "VisualLoggerUtils.h"
+#include "MathUtils.h"
 
 
 UBalingaMovement::UBalingaMovement()
 {
 
 }
-
-// Check if we're in the given custom movement mode
-
-void UBalingaMovement::EnterFly()
+void UBalingaMovement::InitializeComponent()
 {
-	CharacterOwner->bUseControllerRotationPitch = true;
-	CharacterOwner->bUseControllerRotationRoll = true;
+	Super::InitializeComponent();
+
+	BalingaOwner = Cast<ABalingaBase>(GetOwner());
 
 	thrustScale = defaultThrustScale;
 
@@ -31,33 +30,9 @@ void UBalingaMovement::EnterFly()
 	windVelocity = defaultWindVelocity;
 	airDensity = defaultAirDensity;
 
-	SetMovementMode(MOVE_Custom, CMOVE_Fly);
+	lastDesiredDifference = FVector::ZeroVector;
+	smoothVelocity = FVector::ZeroVector;
 }
-void UBalingaMovement::ExitFly()
-{
-	CharacterOwner->bUseControllerRotationPitch = false;
-	CharacterOwner->bUseControllerRotationRoll = false;
-	
-	SetMovementMode(MOVE_Falling);
-}
-void UBalingaMovement::DoFlap()
-{
-	// Thrust is applied in the direction the character is facing
-	// Drag and gravity will decelerate this
-	if (CharacterOwner->bPressedJump)
-	{
-		actorForward = CharacterOwner->GetActorForwardVector();
-		Velocity += ((thrustScale * actorForward) / Mass);
-
-		CharacterOwner->bPressedJump = false;
-	}
-}
-void UBalingaMovement::LandPressed()
-{
-	ExitFly();
-}
-
-void UBalingaMovement::LandReleased(){}
 
 void UBalingaMovement::PhysCustom(float deltaTime, int32 Iterations)
 {
@@ -78,42 +53,72 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	{
 		return;
 	}
-	
+
+	FVector flowDirection = (Velocity + windVelocity).GetSafeNormal();
+	FVector desiredDifference = CharacterOwner->GetActorForwardVector() - flowDirection;
+	FVector desiredDifferenceDirection = desiredDifference.GetSafeNormal();
+	float desiredDifferenceDot = FVector::DotProduct(flowDirection, CharacterOwner->GetActorForwardVector());
+
+	// DON'T NEED TO SMOOTH ANYTHING YET
+	/*std::tuple<FVector, FVector> data = FMathUtils::SmoothDamp3(lastDesiredDifference, desiredDifferenceDirection, smoothVelocity, smoothTime);
+	lastDesiredDifference = desiredDifferenceDirection;
+	desiredDifferenceDirection = std::get<0>(data);
+	smoothVelocity = std::get<1>(data);*/
+
+	FVector Gravity = -GetGravityDirection() * GetGravityZ();
+	Velocity += Gravity * deltaTime;
+
 	FVector baseForce = ((airDensity * FMath::Square((Velocity + windVelocity).GetAbs()) / 2.0f)) * surfaceArea;
 	actorUp = CharacterOwner->GetActorUpVector();
 
-	FVector flowDirection = (Velocity + windVelocity).GetSafeNormal();
-	FVector desiredDirectionDifference = (CharacterOwner->GetActorForwardVector() - flowDirection).GetSafeNormal();
-	
-	// Lift is applied perpendicular to the velocity's direction and the player's right direction (different from just up direction)
-	FVector lift = (baseForce.X + baseForce.Y + baseForce.Z) * FVector::CrossProduct(flowDirection, CharacterOwner->GetActorRightVector()) * liftScale;
-	float liftDesiredDot = FVector::DotProduct(desiredDirectionDifference, lift.GetSafeNormal());
-	float liftDesiredScale = liftDesiredDot * liftDesiredScaleScale;
+	// Lift is applied perpendicular to the velocity's direction and the player's right direction (different from just player up direction)
+	FVector lift = baseForce.Size() * FVector::CrossProduct(flowDirection, CharacterOwner->GetActorRightVector()) * liftScale;
+	float liftDesiredDot = FVector::DotProduct(desiredDifferenceDirection, lift.GetSafeNormal());
+	float liftDesiredScale = liftDesiredDot;
+
+	float trueLiftDesiredScale = liftDesiredScale;
+	FVector trueLiftAcceleration = ((lift * trueLiftDesiredScale) / Mass) * deltaTime;
+
 	liftDesiredScale = FMath::Max(liftDesiredScale, minLiftDesiredScale);
-	lift *= liftDesiredScale;
+	lift = lift - (lift * liftDesiredScaleScale) + (lift * liftDesiredScaleScale * liftDesiredScale);
 	FVector liftAcceleration = (lift / Mass) * deltaTime;
+
+	FVector assumedDesiredDifference = (CharacterOwner->GetActorForwardVector() - (liftAcceleration + Velocity + windVelocity).GetSafeNormal());
+	FVector assumedDesiredDifferenceDirection = assumedDesiredDifference.GetSafeNormal();
+	bool bisAssumedDotDifferentSign = FMath::Sign(assumedDesiredDifferenceDirection.Dot(lift.GetSafeNormal())) != FMath::Sign(liftDesiredScale);
+	if (bisAssumedDotDifferentSign)
+	{
+		float desiredLiftProjectionScale = FVector::DotProduct(desiredDifference * 1, liftAcceleration) / liftAcceleration.Size();
+		liftAcceleration *= desiredLiftProjectionScale;
+		liftDesiredScale *= desiredLiftProjectionScale;
+	}
+
 	Velocity += liftAcceleration;
 
-	const FVector Gravity = -GetGravityDirection() * GetGravityZ();
-	Velocity += Gravity * deltaTime;
-
 	// Drag is parallel and negative to velocity, applied last so it can oppose everything
-	FVector drag = (baseForce.X + baseForce.Y + baseForce.Z) * flowDirection * -1.0f * dragScale;
-	float dragDesiredDot = FVector::DotProduct(desiredDirectionDifference, drag.GetSafeNormal());
-	float dragDesiredScale = dragDesiredDot * dragDesiredScaleScale;
+	FVector drag = baseForce.Size() * flowDirection * -1.0f * dragScale;
+	float dragDesiredDot = FVector::DotProduct(desiredDifferenceDirection, drag.GetSafeNormal());
+	float dragDesiredScale = dragDesiredDot;
 	dragDesiredScale = FMath::Max(dragDesiredScale, minDragDesiredScale);
-	drag *= dragDesiredScale;
+	drag = drag - (drag * dragDesiredScaleScale) + (drag * dragDesiredScaleScale * dragDesiredScale);
 	FVector dragAcceleration = (drag / Mass) * deltaTime;
+	
+	// DOES WORK SMOOTH BUT POSSIBLY NOT WANTED
+	//FVector dragAssumedDesiredDifference = (CharacterOwner->GetActorForwardVector() - (dragAcceleration + Velocity + windVelocity).GetSafeNormal());
+	//FVector dragAssumedDesiredDifferenceDirection = dragAssumedDesiredDifference.GetSafeNormal();
+	//bool bisDragAssumedDotDifferentSign = FMath::Sign(dragAssumedDesiredDifferenceDirection.Dot(Gravity.GetSafeNormal())) != FMath::Sign(dragDesiredScale);
+	//if (bisDragAssumedDotDifferentSign)
+	//{
+	//	float desiredDragProjectionScale = FVector::DotProduct(desiredDifference * 1, dragAcceleration) / dragAcceleration.Size();
+	//	dragAcceleration *= desiredDragProjectionScale;
+	//	dragDesiredScale *= desiredDragProjectionScale;
+	//}
+
 	Velocity += dragAcceleration;
 
 	// Applies input acceleration
 	// Use acceleration to change rotation probably
 	// CalcVelocity(deltaTime, 0.0f, false, 0.0f);
-
-	if (Velocity.Size() > 9999)
-	{
-	//	Velocity = 9999 * Velocity.GetSafeNormal();
-	}
 
 	Iterations++;
 	bJustTeleported = false;
@@ -124,7 +129,7 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	FVector Adjusted = Velocity * deltaTime;
 	
 	SafeMoveUpdatedComponent(Adjusted, OldRotation, true, Hit); // Actually moves and rotates everything
-
+	
 	if (Hit.Time < 1.f)
 	{
 		HandleImpact(Hit, deltaTime, Adjusted);
@@ -137,35 +142,72 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	}
 
 	FVector position = CharacterOwner->GetActorLocation();
+
 	float vlogScale = 1;
+	float cylinderRadius = 1.5;
+	float arrowHeight = 20;
+	float arrowWidth = 15;
 
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + actorForward * thrustScale, FColor::Green, TEXT("Thrust acceleration"));
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + dragAcceleration * vlogScale, FColor::Red, TEXT("Drag acceleration"));
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + liftAcceleration * vlogScale, FColor::Yellow, TEXT("Lift acceleration"));
-	UE_VLOG_ARROW(CharacterOwner->GetWorld(), LogTemp, Verbose, position, position + desiredDirectionDifference * 100, FColor::Purple, TEXT("Desired difference"));
+	FVisualLoggerUtils::DrawVlogArrow(CharacterOwner->GetWorld(), "LogTemp", position, position + actorForward * thrustScale, cylinderRadius, FColor::Green, "Thrust acceleration", arrowHeight, arrowWidth, FColor::Green, "");
+	FVisualLoggerUtils::DrawVlogArrow(CharacterOwner->GetWorld(), "LogTemp", position, position + trueLiftAcceleration * vlogScale, cylinderRadius, FColor::Orange, "True lift acceleration", arrowHeight, arrowWidth, FColor::Orange, "");
+	FVisualLoggerUtils::DrawVlogArrow(CharacterOwner->GetWorld(), "LogTemp", position, position + liftAcceleration * vlogScale, cylinderRadius, FColor::Yellow, "Lift acceleration", arrowHeight, arrowWidth, FColor::Yellow, "");
+	FVisualLoggerUtils::DrawVlogArrow(CharacterOwner->GetWorld(), "LogTemp", position, position + dragAcceleration * vlogScale, cylinderRadius, FColor::Red, "Drag acceleration", arrowHeight, arrowWidth, FColor::Red, "");
+	//FVisualLoggerUtils::DrawVlogArrow(CharacterOwner->GetWorld(), "LogTemp", position, position + Gravity * vlogScale, cylinderRadius, FColor::Blue, "Gravity acceleration", arrowHeight, arrowWidth, FColor::Blue, "");
+	FVisualLoggerUtils::DrawVlogArrow(CharacterOwner->GetWorld(), "LogTemp", position, position + desiredDifferenceDirection * 100, cylinderRadius, FColor::Purple, "Desired difference" + desiredDifferenceDirection.ToCompactString(), arrowHeight, arrowWidth, FColor::Purple, "");
 
-	GEngine->AddOnScreenDebugMessage(2, 100.0f, FColor(255, 0, 0), FString::Printf(TEXT("Velocity: [%s]"), *Velocity.ToString()));
-	GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Yellow, FString::Printf(TEXT("Drag directional scale: [%s]"), *FString::SanitizeFloat(dragDesiredScale)));
-	GEngine->AddOnScreenDebugMessage(4, 100.0f, FColor::Green, FString::Printf(TEXT("Lift directional scale: [%s]"), *FString::SanitizeFloat(liftDesiredScale)));
+
+	GEngine->AddOnScreenDebugMessage(2, 100.0f, FColor::Green, FString::Printf(TEXT("Velocity: [%s]"), *Velocity.ToCompactString()));
+	GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Purple, FString::Printf(TEXT("Desired difference: [%s]"), *(FString::SanitizeFloat(desiredDifference.X) + ", " + FString::SanitizeFloat(desiredDifference.Y) + ", " + FString::SanitizeFloat(desiredDifference.Z))));
+	GEngine->AddOnScreenDebugMessage(4, 100.0f, FColor::Magenta, FString::Printf(TEXT("Desired difference dot: [%s]"), *FString::SanitizeFloat(desiredDifferenceDot)));
+	GEngine->AddOnScreenDebugMessage(5, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift desired scale: [%s]"), *FString::SanitizeFloat(liftDesiredScale)));
+	GEngine->AddOnScreenDebugMessage(6, 100.0f, FColor::Orange, FString::Printf(TEXT("True lift desired scale: [%s]"), *FString::SanitizeFloat(trueLiftDesiredScale)));
+	GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("Drag desired scale: [%s]"), *FString::SanitizeFloat(dragDesiredScale)));
 
 	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Lift", FVector2D(GetWorld()->GetTimeSeconds(), liftAcceleration.Size()));
 	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Drag", FVector2D(GetWorld()->GetTimeSeconds(), dragAcceleration.Size()));	
 
-	UE_LOG(LogTemp, Log, TEXT("Desired difference: %s"), *desiredDirectionDifference.ToString());
+	//UE_LOG(LogTemp, Log, TEXT("Desired difference: %s"), *desiredDifferenceDirection.ToString());
 
-	UE_LOG(LogTemp, Log, TEXT("Drag direction: %s"), *drag.GetSafeNormal().ToString());
-	UE_LOG(LogTemp, Log, TEXT("Drag dot: %s"), *FString::SanitizeFloat(dragDesiredDot));
+	//UE_LOG(LogTemp, Log, TEXT("Drag direction: %s"), *drag.GetSafeNormal().ToString());
+	//UE_LOG(LogTemp, Log, TEXT("Drag dot: %s"), *FString::SanitizeFloat(dragDesiredDot));
 
-	UE_LOG(LogTemp, Log, TEXT("Lift direction: %s"), *lift.GetSafeNormal().ToString());
-	UE_LOG(LogTemp, Log, TEXT("Lift dot: %s"), *FString::SanitizeFloat(liftDesiredDot));
+	//UE_LOG(LogTemp, Log, TEXT("Lift direction: %s"), *lift.GetSafeNormal().ToString());
+	//UE_LOG(LogTemp, Log, TEXT("Lift dot: %s"), *FString::SanitizeFloat(liftDesiredDot));
 }
 
-void UBalingaMovement::InitializeComponent()
+void UBalingaMovement::EnterFly()
 {
-	Super::InitializeComponent();
+	CharacterOwner->bUseControllerRotationPitch = true;
+	CharacterOwner->bUseControllerRotationRoll = true;
 
-	BalingaOwner = Cast<ABalingaBase>(GetOwner());
+	SetMovementMode(MOVE_Custom, CMOVE_Fly);
 }
+void UBalingaMovement::ExitFly()
+{	
+	CharacterOwner->bUseControllerRotationPitch = false;
+	CharacterOwner->bUseControllerRotationRoll = false;
+
+	SetMovementMode(MOVE_Falling);
+}
+
+void UBalingaMovement::FlapPressed()
+{
+	// Thrust is applied in the direction the character is facing
+	// Drag and gravity will decelerate this
+	if (CharacterOwner->bPressedJump)
+	{
+		actorForward = CharacterOwner->GetActorForwardVector();
+		Velocity += ((thrustScale * actorForward) / Mass);
+
+		CharacterOwner->bPressedJump = false;
+	}
+}
+
+void UBalingaMovement::LandPressed()
+{
+	ExitFly();
+}
+void UBalingaMovement::LandReleased(){}
 
 void UBalingaMovement::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
 {
