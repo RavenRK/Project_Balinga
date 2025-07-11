@@ -8,6 +8,7 @@
 #include "Components/SphereComponent.h"
 #include "BaseItem.h"
 
+
 #include "BalingaBase.generated.h"
 
 UCLASS()
@@ -22,13 +23,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement) 
 	class UBalingaMovement* BalingaMovement;
 
-	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"));
+	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"));
 	class UCameraComponent* Camera;
 
-	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"));
+	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"));
 	class USpringArmComponent* SpringArm;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Move Balinga|other|Attack")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Move Balinga|other|Attack")
 	class USphereComponent* AttackSphere;
 	
 
@@ -37,11 +38,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
 	float BaseGravityScale = 9.8f;
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
-	float JumpGravityScale = 4.9f;
+	float JumpGravityScale = 3.9f;
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump")
 	float JumpVelocity = 1200;
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|")
-	float MoveSpeed = 600;
+	float MoveSpeed = 750;
 
 	FTimerHandle AttackCooldownTimer;
 protected:

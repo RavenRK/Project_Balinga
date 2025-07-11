@@ -7,6 +7,9 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
+//!
+#include "CameraController_Balinga.h"
+
 #include "DrawDebugHelpers.h"
 
 #include "Logging/LogMacros.h"
@@ -18,6 +21,7 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 
 	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
+
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
 	SpringArm->SetupAttachment(RootComponent);
@@ -50,7 +54,6 @@ void ABalingaBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 }
-
 
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {Super::SetupPlayerInputComponent(PlayerInputComponent);}
