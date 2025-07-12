@@ -88,7 +88,7 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	bool bisAssumedDotDifferentSign = FMath::Sign(assumedDesiredDifferenceDirection.Dot(lift.GetSafeNormal())) != FMath::Sign(liftDesiredScale);
 	if (bisAssumedDotDifferentSign)
 	{
-		float desiredLiftProjectionScale = FVector::DotProduct(desiredDifference * 1, liftAcceleration) / liftAcceleration.Size();
+		float desiredLiftProjectionScale = FVector::DotProduct(desiredDifference, liftAcceleration) / liftAcceleration.Size();
 		liftAcceleration *= desiredLiftProjectionScale;
 		liftDesiredScale *= desiredLiftProjectionScale;
 	}
