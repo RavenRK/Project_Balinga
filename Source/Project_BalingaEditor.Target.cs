@@ -10,6 +10,6 @@ public class Project_BalingaEditorTarget : TargetRules
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V5;
 
-		ExtraModuleNames.AddRange( new string[] { "Project_Balinga" } );
+		ExtraModuleNames.AddRange( new string[] { "Project_Balinga"} );
 	}
 }
