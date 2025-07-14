@@ -33,7 +33,7 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 		// In Air / Flight
 		EnhInputComponent->BindAction(LandAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Land);
-
+		EnhInputComponent->BindAction(CamAction, ETriggerEvent::Started, this, &ABalingaControllerBase::CamChange);
 		// Abilities 
 		EnhInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
 		EnhInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
@@ -76,7 +76,12 @@ void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)	{if (PlayerCharacter) PlayerCharacter->StartJump();}
 void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)		{if (PlayerCharacter) PlayerCharacter->EndJump();  }
 
-void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) { if (PlayerCharacter) PlayerCharacter->Land(); }
+void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue)		{ if (PlayerCharacter) PlayerCharacter->Land(); }
+
+void ABalingaControllerBase::CamChange(const FInputActionValue& InputActionValue)
+{
+	if (PlayerCharacter) PlayerCharacter->CamChange();
+}
 
 #pragma endregion
 

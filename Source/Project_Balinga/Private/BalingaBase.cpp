@@ -4,11 +4,11 @@
 #include "BalingaBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "BalingaMovement.h"
-#include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
 //!
-#include "CameraController_Balinga.h"
+#include "BalingaCamera.h"
+#include "Camera/CameraComponent.h"
 
 #include "DrawDebugHelpers.h"
 
@@ -21,7 +21,7 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 
 	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
-
+	CameraController = Cast<UBalingaCamera>(GetCharacterMovement());
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
 	SpringArm->SetupAttachment(RootComponent);
@@ -50,6 +50,7 @@ void ABalingaBase::BeginPlay()
 void ABalingaBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	CameraController->CameraControllerCheck(Camera, SpringArm, DeltaTime, camMode);
 }
 
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -111,6 +112,13 @@ void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravity
 void ABalingaBase::Land()
 {
 	BalingaMovement->LandPressed();
+}
+
+void ABalingaBase::CamChange()
+{
+	camMode++;
+	if (camMode > 3)
+		camMode = 0;
 }
 
 #pragma region Abilities
