@@ -12,6 +12,8 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 	PlayerCharacter = Cast<ABalingaBase>(aPawn);
 	checkf(PlayerCharacter, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
 
+
+
 	EnhInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
 	checkf(EnhInputComponent, TEXT("Unable to get reference to the EnhancedInputComponent."));
 
@@ -62,7 +64,6 @@ void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue
 }
 
 #pragma endregion
-
 #pragma region Movement
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {
@@ -78,12 +79,14 @@ void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)	
 
 void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue)		{ if (PlayerCharacter) PlayerCharacter->Land(); }
 
+
+
+#pragma endregion
+
 void ABalingaControllerBase::CamChange(const FInputActionValue& InputActionValue)
 {
 	if (PlayerCharacter) PlayerCharacter->CamChange();
 }
-
-#pragma endregion
 
 void ABalingaControllerBase::OnUnPossess()
 {

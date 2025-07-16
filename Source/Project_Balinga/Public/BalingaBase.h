@@ -11,7 +11,7 @@
 
 #include "BalingaBase.generated.h"
 
-class CameraController_Balinga;
+class CameraController;
 
 UCLASS()
 class ABalingaBase : public ACharacter
@@ -35,7 +35,7 @@ public:
 	class USphereComponent* AttackSphere;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	class UBalingaCamera* CameraController;
+	class UBalingaCamera* BalingaCamera;
 
 	//Ground parameters
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
