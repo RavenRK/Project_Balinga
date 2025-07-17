@@ -8,7 +8,7 @@ public class Project_Balinga : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Debug", "MyMath"});
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Debug", "MyMath", "UMG"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

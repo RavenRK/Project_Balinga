@@ -9,8 +9,8 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 {
 	Super::OnPossess(aPawn);
 
-	PlayerCharacter = Cast<ABalingaBase>(aPawn);
-	checkf(PlayerCharacter, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
+	Balinga = Cast<ABalingaBase>(aPawn);
+	checkf(Balinga, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
 
 	EnhInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
 	checkf(EnhInputComponent, TEXT("Unable to get reference to the EnhancedInputComponent."));
@@ -41,6 +41,8 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 	}
 	else   {checkf(false, TEXT("One or more input actions were not specified."));}
+
+	//Qjg0LTg3MbShowMouseCursor = true;
 }
 
 #pragma region Abilities
@@ -53,12 +55,12 @@ void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 }
 void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) 
 { 
-	if (PlayerCharacter) PlayerCharacter->TryAttack(); 
+	if (Balinga) Balinga->TryAttack(); 
 }
 
 void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue)
 {
-	if (PlayerCharacter) PlayerCharacter->DropItem();
+	if (Balinga) Balinga->DropItem();
 }
 
 #pragma endregion
@@ -67,16 +69,16 @@ void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {
 	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
-	if (PlayerCharacter)
+	if (Balinga)
 	{
-		PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorForwardVector(), MovementVector.Y);
-		PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorRightVector(), MovementVector.X);
+		Balinga->AddMovementInput(Balinga->GetActorForwardVector(), MovementVector.Y);
+		Balinga->AddMovementInput(Balinga->GetActorRightVector(), MovementVector.X);
 	}
 }
-void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)	{if (PlayerCharacter) PlayerCharacter->StartJump();}
-void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)		{if (PlayerCharacter) PlayerCharacter->EndJump();  }
+void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)	{if (Balinga) Balinga->StartJump();}
+void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)		{if (Balinga) Balinga->EndJump();  }
 
-void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) { if (PlayerCharacter) PlayerCharacter->Land(); }
+void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) { if (Balinga) Balinga->Land(); }
 
 #pragma endregion
 

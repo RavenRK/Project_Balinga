@@ -12,6 +12,7 @@ class ABalingaBase;
 class UInputAction;
 class UInputMappingContext;
 class ABaseItem;
+class ABalingaHudBase;
 struct FInputActionValue;
 
 UCLASS(Abstract)
@@ -59,13 +60,11 @@ protected:
 private:
 	GENERATED_BODY()
 
-	// Stores ref to one of our parent class', AActor's, InputComponent cast to an EnhInputComponent
-	UPROPERTY()
-	TObjectPtr<UEnhancedInputComponent> EnhInputComponent{ nullptr };
+	UPROPERTY() TObjectPtr<UEnhancedInputComponent> EnhInputComponent{ nullptr };
 
-	// Stores ref to the player's pawn
-	UPROPERTY()
-	TObjectPtr<ABalingaBase> PlayerCharacter{ nullptr };
- 
+	UPROPERTY() TObjectPtr<ABalingaBase> Balinga{ nullptr };
 
+	UPROPERTY() TObjectPtr<ABalingaHudBase> Hud;
+	
+	
 };

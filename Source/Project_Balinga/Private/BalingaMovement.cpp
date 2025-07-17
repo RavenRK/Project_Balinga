@@ -80,7 +80,7 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	FVector trueLiftAcceleration = ((lift * trueLiftDesiredScale) / Mass) * deltaTime;
 
 	liftDesiredScale = FMath::Max(liftDesiredScale, minLiftDesiredScale);
-	lift = lift - (lift * liftDesiredScaleScale) + (lift * liftDesiredScaleScale * liftDesiredScale);
+	lift *= liftDesiredScale;
 	FVector liftAcceleration = (lift / Mass) * deltaTime;
 
 	FVector assumedDesiredDifference = (CharacterOwner->GetActorForwardVector() - (liftAcceleration + Velocity + windVelocity).GetSafeNormal());
@@ -88,9 +88,15 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	bool bisAssumedDotDifferentSign = FMath::Sign(assumedDesiredDifferenceDirection.Dot(lift.GetSafeNormal())) != FMath::Sign(liftDesiredScale);
 	if (bisAssumedDotDifferentSign)
 	{
+		liftAcceleration = (lift / liftDesiredScale / Mass) * deltaTime;
+
 		float desiredLiftProjectionScale = FVector::DotProduct(desiredDifference, liftAcceleration) / liftAcceleration.Size();
-		liftAcceleration *= desiredLiftProjectionScale;
-		liftDesiredScale *= desiredLiftProjectionScale;
+		if (bShouldAlwaysEnforceLiftLimits)
+		{
+			liftDesiredScale = FMath::Max(liftDesiredScale * desiredLiftProjectionScale, minLiftDesiredScale);
+		}
+
+		liftAcceleration *= liftDesiredScale;
 	}
 
 	Velocity += liftAcceleration;
@@ -102,7 +108,7 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	dragDesiredScale = FMath::Max(dragDesiredScale, minDragDesiredScale);
 	drag = drag - (drag * dragDesiredScaleScale) + (drag * dragDesiredScaleScale * dragDesiredScale);
 	FVector dragAcceleration = (drag / Mass) * deltaTime;
-	
+
 	// DOES WORK SMOOTH BUT POSSIBLY NOT WANTED
 	//FVector dragAssumedDesiredDifference = (CharacterOwner->GetActorForwardVector() - (dragAcceleration + Velocity + windVelocity).GetSafeNormal());
 	//FVector dragAssumedDesiredDifferenceDirection = dragAssumedDesiredDifference.GetSafeNormal();
@@ -127,15 +133,17 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	FQuat OldRotation = UpdatedComponent->GetComponentRotation().Quaternion();
 	FHitResult Hit(1.f);
 	FVector Adjusted = Velocity * deltaTime;
-	
+
 	SafeMoveUpdatedComponent(Adjusted, OldRotation, true, Hit); // Actually moves and rotates everything
-	
+
+	// Slides if we collide with a surface
 	if (Hit.Time < 1.f)
 	{
 		HandleImpact(Hit, deltaTime, Adjusted);
 		SlideAlongSurface(Adjusted, (1.f - Hit.Time), Hit.Normal, Hit, true);
 	}
 
+	// Velocity is not guaranteed to be what we set it as (could collide), so set it to the actual distance over time
 	if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
 		Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation) / deltaTime;
@@ -164,7 +172,7 @@ void UBalingaMovement::PhysFly(float deltaTime, int32 Iterations)
 	GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("Drag desired scale: [%s]"), *FString::SanitizeFloat(dragDesiredScale)));
 
 	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Lift", FVector2D(GetWorld()->GetTimeSeconds(), liftAcceleration.Size()));
-	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Drag", FVector2D(GetWorld()->GetTimeSeconds(), dragAcceleration.Size()));	
+	UE_VLOG_HISTOGRAM(this, "MyGame", Verbose, "Force Accelerations", "Drag", FVector2D(GetWorld()->GetTimeSeconds(), dragAcceleration.Size()));
 
 	//UE_LOG(LogTemp, Log, TEXT("Desired difference: %s"), *desiredDifferenceDirection.ToString());
 
@@ -183,7 +191,7 @@ void UBalingaMovement::EnterFly()
 	SetMovementMode(MOVE_Custom, CMOVE_Fly);
 }
 void UBalingaMovement::ExitFly()
-{	
+{
 	CharacterOwner->bUseControllerRotationPitch = false;
 	CharacterOwner->bUseControllerRotationRoll = false;
 
@@ -207,12 +215,12 @@ void UBalingaMovement::LandPressed()
 {
 	ExitFly();
 }
-void UBalingaMovement::LandReleased(){}
+void UBalingaMovement::LandReleased() {}
 
 void UBalingaMovement::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
 {
 	Super::UpdateCharacterStateBeforeMovement(DeltaSeconds);
-	
+
 	if (bWantsToLand)
 	{
 		LandPressed();
@@ -226,16 +234,16 @@ bool UBalingaMovement::IsCustomMovementMode(ECustomMovementMode InCustomMovement
 FNetworkPredictionData_Client* UBalingaMovement::GetPredictionData_Client() const
 {
 	check(PawnOwner != nullptr)
-	
-	if (ClientPredictionData == nullptr)
-	{
-		UBalingaMovement* MutableThis = const_cast<UBalingaMovement*>(this);
 
-		MutableThis->ClientPredictionData = new FNetworkPredictionData_Client_Balinga(*this);
-		MutableThis->ClientPredictionData->MaxSmoothNetUpdateDist = 92.f;
-		MutableThis->ClientPredictionData->NoSmoothNetUpdateDist = 140.f;
-	}
-	
+		if (ClientPredictionData == nullptr)
+		{
+			UBalingaMovement* MutableThis = const_cast<UBalingaMovement*>(this);
+
+			MutableThis->ClientPredictionData = new FNetworkPredictionData_Client_Balinga(*this);
+			MutableThis->ClientPredictionData->MaxSmoothNetUpdateDist = 92.f;
+			MutableThis->ClientPredictionData->NoSmoothNetUpdateDist = 140.f;
+		}
+
 	return ClientPredictionData;
 }
 void UBalingaMovement::UpdateFromCompressedFlags(uint8 Flags)

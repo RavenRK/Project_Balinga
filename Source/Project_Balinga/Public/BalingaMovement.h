@@ -69,9 +69,8 @@ private:
 	FVector actorForward;
 	FVector actorUp;
 	FVector lastDesiredDifference;
-	FVector clampedDesiredDifference;
 	
-	bool bisClamped;
+	UPROPERTY(EditDefaultsOnly) bool bShouldAlwaysEnforceLiftLimits;
 
 	FVector smoothVelocity;
 	UPROPERTY(EditDefaultsOnly) FVector smoothTime;
