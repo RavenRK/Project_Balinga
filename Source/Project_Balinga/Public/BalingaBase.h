@@ -11,6 +11,8 @@
 
 #include "BalingaBase.generated.h"
 
+class CameraController;
+
 UCLASS()
 class ABalingaBase : public ACharacter
 {
@@ -32,7 +34,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Move Balinga|other|Attack")
 	class USphereComponent* AttackSphere;
 	
-
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	class UBalingaCamera* BalingaCamera;
 
 	//Ground parameters
 	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
@@ -59,6 +62,9 @@ public:
 	void EndJump();
 
 	void Land();
+
+	void CamChange();
+	int camMode = 0;
 
 	#pragma region AttackFunctions
 

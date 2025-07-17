@@ -12,6 +12,8 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 	Balinga = Cast<ABalingaBase>(aPawn);
 	checkf(Balinga, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
 
+
+
 	EnhInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
 	checkf(EnhInputComponent, TEXT("Unable to get reference to the EnhancedInputComponent."));
 
@@ -33,7 +35,7 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 		// In Air / Flight
 		EnhInputComponent->BindAction(LandAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Land);
-
+		EnhInputComponent->BindAction(CamAction, ETriggerEvent::Started, this, &ABalingaControllerBase::CamChange);
 		// Abilities 
 		EnhInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
 		EnhInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
@@ -64,7 +66,6 @@ void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue
 }
 
 #pragma endregion
-
 #pragma region Movement
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {
@@ -81,6 +82,11 @@ void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)	
 void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) { if (Balinga) Balinga->Land(); }
 
 #pragma endregion
+
+void ABalingaControllerBase::CamChange(const FInputActionValue& InputActionValue)
+{
+	if (PlayerCharacter) PlayerCharacter->CamChange();
+}
 
 void ABalingaControllerBase::OnUnPossess()
 {

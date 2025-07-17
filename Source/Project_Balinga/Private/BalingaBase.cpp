@@ -8,10 +8,9 @@
 #include "GameFramework/SpringArmComponent.h"
 
 //!
-#include "CameraController_Balinga.h"
+#include "BalingaCamera.h"
 
 #include "DrawDebugHelpers.h"
-
 #include "Logging/LogMacros.h"
 
 // Sets default values
@@ -21,7 +20,7 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 
 	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
-
+	BalingaCamera = Cast<UBalingaCamera>(GetCharacterMovement());
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
 	SpringArm->SetupAttachment(RootComponent);
@@ -45,13 +44,15 @@ void ABalingaBase::BeginPlay()
 	BalingaMovement->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	AttackSphere->OnComponentBeginOverlap.AddDynamic(this, &ABalingaBase::OnAttackOverlap);
-	
-	
 }
 
 void ABalingaBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	float Speed = GetVelocity().Size();
+	BalingaCamera->CameraControllerCheck(Camera, SpringArm, DeltaTime, camMode, Speed);
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, FString::Printf(TEXT("Speed: %.2f"), Speed));
 
 }
 
@@ -114,6 +115,12 @@ void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravity
 void ABalingaBase::Land()
 {
 	BalingaMovement->LandPressed();
+}
+
+void ABalingaBase::CamChange()
+{
+	camMode++;
+	if (camMode > 3) camMode = 0;
 }
 
 #pragma region Abilities

@@ -33,14 +33,17 @@ public:
 	TObjectPtr<UInputAction> MoveAction{ nullptr };
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|Ground|Actions")
 	TObjectPtr<UInputAction> JumpAction{ nullptr };
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|In Air / Flying|Actions")
 	TObjectPtr<UInputAction> LandAction{ nullptr };
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|Other|Actions")
 	TObjectPtr<UInputAction> AttackAction{ nullptr };
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement|Other|Actions")
 	TObjectPtr<UInputAction> DropAction{ nullptr };
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CamAction")
+	TObjectPtr<UInputAction> CamAction{ nullptr };
 
 protected:
 	virtual void OnPossess(APawn* aPawn) override;
@@ -53,6 +56,7 @@ protected:
 	void EndJump(const FInputActionValue& InputActionValue);
 
 	void Land(const FInputActionValue& InputActionValue);
+	void CamChange(const FInputActionValue& InputActionValue); //new camera change thing
 
 	void Attack(const FInputActionValue& InputActionValue);
 	void DropItem(const FInputActionValue& InputActionValue);
