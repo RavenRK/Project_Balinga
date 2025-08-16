@@ -25,6 +25,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement) 
 	class UBalingaMovement* BalingaMovement;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
+	class ABalingaControllerBase* ControllerBase;
+
+
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"));
 	class UCameraComponent* Camera;
 

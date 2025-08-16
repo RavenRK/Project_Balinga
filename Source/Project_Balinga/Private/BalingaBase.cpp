@@ -28,7 +28,7 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(SpringArm);
-
+	
 	AttackSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AttackSphere"));
 	AttackSphere->SetupAttachment(RootComponent);
 	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -52,8 +52,24 @@ void ABalingaBase::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size();
 	BalingaCamera->CameraControllerCheck(Camera, SpringArm, DeltaTime, camMode, Speed);
-	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, FString::Printf(TEXT("Speed: %.2f"), Speed));
 
+	FRotator BalingaRotation = GetActorRotation();
+	float Pitch = BalingaRotation.Pitch;
+	if (Pitch > 5)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Red, TEXT("Flying"));
+		camMode = 1; // Set camMode to 1 for flying
+	}
+	else if (Pitch < -30.0f)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Green, TEXT("Diving"));
+		camMode = 2; // Set camMode to 2 for diving
+	}
+	else if (Pitch < -5.0f && Pitch > -30.0f)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Green, TEXT("Gliding"));
+		camMode = 2; // Set camMode to 2 for diving
+	}
 }
 
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -115,12 +131,6 @@ void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravity
 void ABalingaBase::Land()
 {
 	BalingaMovement->LandPressed();
-}
-
-void ABalingaBase::CamChange()
-{
-	camMode++;
-	if (camMode > 3) camMode = 0;
 }
 
 #pragma region Abilities
