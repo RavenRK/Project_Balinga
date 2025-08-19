@@ -87,10 +87,10 @@ void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue
 #pragma endregion
 
 
-void ABalingaControllerBase::CamChange(const FInputActionValue& InputActionValue)
-{
-	if (Balinga) Balinga->CamChange();
-}
+//void ABalingaControllerBase::CamChange(const FInputActionValue& InputActionValue)
+//{
+//	if (Balinga) Balinga->CamChange();
+//}
 
 FVector2D ABalingaControllerBase::GetAimerPosition()
 {

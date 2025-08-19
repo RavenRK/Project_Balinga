@@ -78,7 +78,6 @@ public:
 
 	void Land();
 
-	void CamChange();
 	int camMode = 0;
 
 	#pragma region AttackFunctions
