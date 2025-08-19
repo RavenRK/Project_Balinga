@@ -16,7 +16,7 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 	EnhInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
 	checkf(EnhInputComponent, TEXT("Unable to get reference to the EnhancedInputComponent."));
-
+	
 	TObjectPtr<UEnhancedInputLocalPlayerSubsystem> InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
 	checkf(InputSubsystem, TEXT("Unable to get reference to the EnhancedInputLocalPlayerSubsystem"));
 
@@ -35,7 +35,8 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 		// In Air / Flight
 		EnhInputComponent->BindAction(LandAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Land);
-		EnhInputComponent->BindAction(CamAction, ETriggerEvent::Started, this, &ABalingaControllerBase::CamChange);
+		//EnhInputComponent->BindAction(CamAction, ETriggerEvent::Started, this, &ABalingaControllerBase::CamChange);
+
 		// Abilities 
 		EnhInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
 		EnhInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
@@ -53,6 +54,8 @@ void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 	const FVector2D LookAxisVector = InputActionValue.Get<FVector2D>();
 	AddYawInput(LookAxisVector.X);
 	AddPitchInput(LookAxisVector.Y);
+
+	
 }
 
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)

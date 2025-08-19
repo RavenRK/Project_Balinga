@@ -33,6 +33,9 @@ public:
 
 	UPROPERTY()
 	TObjectPtr<USceneComponent> DragArrow;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
+	class ABalingaControllerBase* ControllerBase;
+
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"));
 	class UCameraComponent* Camera;
