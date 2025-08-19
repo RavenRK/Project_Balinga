@@ -3,17 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BalingaWidget.h"
-#include "AimerBase.h"
-#include "AimerBorderRadiusBase.h"
-#include "AimerScreenScaleBase.h"
+#include "AutoUpdateWidget.h"
 #include "AllLayoutBase.generated.h"
+
+class UAimerBase;
+class UAimerBorderRadiusBase;
+class UAimerScreenScaleBase;
 
 UCLASS(Abstract)
 /**
  * 
  */
-class UAllLayout : public UBalingaWidget
+class UAllLayoutBase : public UAutoUpdateWidget
 {
 	GENERATED_BODY()
 
@@ -26,5 +27,12 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	TObjectPtr<UAimerScreenScaleBase> AimerScreenScale;
+
+	void BeginPlay();
+	void UpdateAimer();
+	FVector2D GetAimerPosition();
+
+private:
+	void SetAimers();
 	
 };

@@ -33,6 +33,14 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	AttackSphere->SetupAttachment(RootComponent);
 	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AttackSphere->SetGenerateOverlapEvents(true);
+
+	LeftLiftArrow = CreateDefaultSubobject<USceneComponent>(TEXT("LeftLiftArrow"));
+	LeftLiftArrow->SetupAttachment(RootComponent);
+	RightLiftArrow = CreateDefaultSubobject<USceneComponent>(TEXT("RightLiftArrow"));
+	RightLiftArrow->SetupAttachment(RootComponent);
+	DragArrow = CreateDefaultSubobject<USceneComponent>(TEXT("DragArrow"));
+	DragArrow->SetupAttachment(RootComponent);
+
 }
 
 void ABalingaBase::BeginPlay()
@@ -79,7 +87,6 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 
 				// Should check if we can eventually
 				BalingaMovement->FlapPressed();
-				UE_LOG(LogTemp, Warning, TEXT("FLAPPED"))
 				return;
 				
 				//JumpCurrentCount++;
@@ -112,6 +119,7 @@ void ABalingaBase::StartJump()
 }
 void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravityScale;}
 #pragma endregion
+
 void ABalingaBase::Land()
 {
 	BalingaMovement->LandPressed();

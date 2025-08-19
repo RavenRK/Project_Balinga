@@ -3,27 +3,34 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BalingaWidget.h"
-#include "AimerBase.h"
+#include "AutoUpdateWidget.h"
 #include "AimerScreenScaleBase.generated.h"
 
 class UImage;
+class UAimerBase;
 
 UCLASS(Abstract)
 /**
  * 
  */
-class UAimerScreenScaleBase : public UBalingaWidget
+class UAimerScreenScaleBase : public UAutoUpdateWidget
 {
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere) float screenScale;
-
-
 public:
-	virtual void UpdateWidget() override;
+	virtual bool Initialize() override;
+	void UpdateWidget();
+	void SetAimer(TObjectPtr<UAimerBase> NewAimer);
+	
+private:
+	GENERATED_BODY()
 	UPROPERTY() TObjectPtr<UAimerBase> Aimer;
-		
+	void SyncAimer();
+
+	UPROPERTY(EditAnywhere) float ScreenScale;
+	FVector2D ViewportSize;
+	void SyncViewportSize(FViewport* Viewport, uint32 Val);
+	void SetSlotSize();
+
+
 protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	TObjectPtr<UImage> ScreenScaleImage;

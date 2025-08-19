@@ -11,8 +11,10 @@
 class ABalingaBase;
 class UInputAction;
 class UInputMappingContext;
+class UEnhancedInputComponent;
 class ABaseItem;
 class ABalingaHudBase;
+class UAimerBase;
 struct FInputActionValue;
 
 UCLASS(Abstract)
@@ -45,6 +47,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CamAction")
 	TObjectPtr<UInputAction> CamAction{ nullptr };
 
+	FVector2D GetAimerPosition();
+
 protected:
 	virtual void OnPossess(APawn* aPawn) override;
 	virtual void OnUnPossess() override;
@@ -56,10 +60,12 @@ protected:
 	void EndJump(const FInputActionValue& InputActionValue);
 
 	void Land(const FInputActionValue& InputActionValue);
+
 	void CamChange(const FInputActionValue& InputActionValue); //new camera change thing
 
 	void Attack(const FInputActionValue& InputActionValue);
 	void DropItem(const FInputActionValue& InputActionValue);
+
 
 private:
 	GENERATED_BODY()
@@ -69,6 +75,7 @@ private:
 	UPROPERTY() TObjectPtr<ABalingaBase> Balinga{ nullptr };
 
 	UPROPERTY() TObjectPtr<ABalingaHudBase> Hud;
+
 	
 	
 };

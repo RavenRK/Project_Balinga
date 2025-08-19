@@ -68,19 +68,19 @@ void UBalingaCamera::CameraControllerCheck(UCameraComponent* Camera, USpringArmC
 	switch (CamChnage)
 	{
 	case 0:
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("ground_CamSettings"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("ground_CamSettings"));
 		ground_CamSettings(Camera, SpringArm, DeltaTime);
 		break;
 	case 1:
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Fly_CamSettings"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Fly_CamSettings"));
 		Fly_CamSettings(Camera, SpringArm, DeltaTime);
 		break;
 	case 2:
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Dive_CamSettings"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Dive_CamSettings"));
 		Dive_CamSettings(Camera, SpringArm, DeltaTime, Speed);
 		break;
 	case 3:
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Crash_CamSettings"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Crash_CamSettings"));
 		Crash_CamSettings(Camera, SpringArm, DeltaTime);
 		break;
 	}

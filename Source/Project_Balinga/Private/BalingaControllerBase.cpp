@@ -3,6 +3,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "BalingaMovement.h"
+#include "UI/BalingaHudBase.h"
 
 
 void ABalingaControllerBase::OnPossess(APawn* aPawn)
@@ -11,8 +13,6 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 	Balinga = Cast<ABalingaBase>(aPawn);
 	checkf(Balinga, TEXT("ABalingaController derived classes should only possess ABalinga derived pawns."));
-
-
 
 	EnhInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
 	checkf(EnhInputComponent, TEXT("Unable to get reference to the EnhancedInputComponent."));
@@ -47,26 +47,14 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 	//Qjg0LTg3MbShowMouseCursor = true;
 }
 
-#pragma region Abilities
-
+#pragma region Movement
 void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 {
 	const FVector2D LookAxisVector = InputActionValue.Get<FVector2D>();
 	AddYawInput(LookAxisVector.X);
 	AddPitchInput(LookAxisVector.Y);
 }
-void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) 
-{ 
-	if (Balinga) Balinga->TryAttack(); 
-}
 
-void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue)
-{
-	if (Balinga) Balinga->DropItem();
-}
-
-#pragma endregion
-#pragma region Movement
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {
 	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
@@ -76,16 +64,39 @@ void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 		Balinga->AddMovementInput(Balinga->GetActorRightVector(), MovementVector.X);
 	}
 }
+
 void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)	{if (Balinga) Balinga->StartJump();}
 void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)		{if (Balinga) Balinga->EndJump();  }
 
 void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) { if (Balinga) Balinga->Land(); }
-
 #pragma endregion
+
+#pragma region Abilities
+void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) 
+{ 
+	if (Balinga) Balinga->TryAttack(); 
+}
+
+void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue)
+{
+	if (Balinga) Balinga->DropItem();
+}
+#pragma endregion
+
 
 void ABalingaControllerBase::CamChange(const FInputActionValue& InputActionValue)
 {
-	if (PlayerCharacter) PlayerCharacter->CamChange();
+	if (Balinga) Balinga->CamChange();
+}
+
+FVector2D ABalingaControllerBase::GetAimerPosition()
+{
+	if (MyHUD)
+	{
+		return Cast<ABalingaHudBase>(MyHUD)->GetAimerPosition();
+	}
+
+	return FVector2D::ZeroVector;
 }
 
 void ABalingaControllerBase::OnUnPossess()

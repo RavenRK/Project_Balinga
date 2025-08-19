@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
-#include "AllLayoutBase.h"
 #include "BalingaHudBase.generated.h"
+
+class UAllLayoutBase;
+class UAimerBase;
 
 UENUM()
 enum class EHudViewMode : uint8
@@ -28,22 +30,20 @@ class ABalingaHudBase : public AHUD
 {
 public:
 	void SetViewMode(int viewMode);
+	FVector2D GetAimerPosition();
 
 private:
 	GENERATED_BODY()
 	
-	UPROPERTY(EditDefaultsOnly) EHudViewMode currentViewMode;
+	UPROPERTY(EditDefaultsOnly) EHudViewMode CurrentViewMode;
 
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UAllLayout> AllLayoutClass;
+	TSubclassOf<UAllLayoutBase> AllLayoutClass;
 
 	// UPROP prevents garbage collection (part 6 - User Interface (B) 8:49)
-	UPROPERTY()	TObjectPtr<UAllLayout> AllLayoutWidget;
+	UPROPERTY()	TObjectPtr<UAllLayoutBase> AllLayoutWidget;
 	
 	TObjectPtr<UWorld> World;
-
-	int tickCount = 0;
-	bool bupdatedScreenScalePastViewportSetupTime = false;
 
 	virtual void Tick(float deltaSeconds) override;
 

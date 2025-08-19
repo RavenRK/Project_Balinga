@@ -22,8 +22,17 @@ public:
 	//ABalingaBase();
 	ABalingaBase(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement) 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Balinga Movement")
 	class UBalingaMovement* BalingaMovement;
+
+	UPROPERTY()
+	TObjectPtr<USceneComponent> LeftLiftArrow;
+
+	UPROPERTY()
+	TObjectPtr<USceneComponent> RightLiftArrow;
+
+	UPROPERTY()
+	TObjectPtr<USceneComponent> DragArrow;
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"));
 	class UCameraComponent* Camera;
@@ -31,20 +40,23 @@ public:
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"));
 	class USpringArmComponent* SpringArm;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Move Balinga|other|Attack")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Balinga Movement|Other|Attack")
 	class USphereComponent* AttackSphere;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	class UBalingaCamera* BalingaCamera;
 
+	UPROPERTY(EditAnywhere, Category = "Help")
+	float bDoesThisWork = true;
+
 	//Ground parameters
-	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
+	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
 	float BaseGravityScale = 9.8f;
-	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump|GravityScale")
+	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
 	float JumpGravityScale = 3.9f;
-	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|Jump")
+	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
 	float JumpVelocity = 1200;
-	UPROPERTY(EditAnywhere, Category = "Move Balinga|Ground|")
+	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|")
 	float MoveSpeed = 750;
 
 	FTimerHandle AttackCooldownTimer;

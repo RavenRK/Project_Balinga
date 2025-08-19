@@ -7,76 +7,50 @@
 #include "Components/CanvasPanelSlot.h"
 #include "BalingaControllerBase.h"
 
-
-void UAimerBase::FollowMouse()
-{
-
-	// Use mouse velocity instead, so we can have a square screen scale 
-	FVector2D mousePosition = FVector2D::ZeroVector;
-
-	UWidgetLayoutLibrary::GetMousePositionScaledByDPI(GetOwningPlayer(), mousePosition.X, mousePosition.Y);
-	
-	FVector2D viewportSize = UWidgetLayoutLibrary::GetViewportSize(GetOwningPlayer());
-
-	mousePosition -= viewportSize / 2; // Get rid of offset on Play In Editor window
-
-	FVector2D velocity = (mousePosition - lastMousePosition) / screenScale;
-
-	lastMousePosition = mousePosition;
-
-	FVector2D nextPosition = FVector2D::ZeroVector;
-
-	//FVector2D mousePositionPercentage = mousePosition / viewportSize;
-
-	//nextPosition = mousePositionPercentage * borderRadius;
-
-
-	//if (mousePosition.GetAbs() * screenScale < (mousePosition.GetAbs()).GetSafeNormal() * borderRadius)
-	//{
-	//	nextPosition = mousePosition * screenScale;
-	//}
-	//else
-	//{
-	//	//nextPosition = mousePosition.GetSafeNormal() * borderRadius;
-	//	nextPosition = mousePosition * screenScale;
-	//}
-
-	if (Slot && GetOwningPlayer())
-	{
-		TObjectPtr<UCanvasPanelSlot> AimerSlot = Cast<UCanvasPanelSlot>(Slot);
-
-		GetOwningPlayer()->GetInputMouseDelta(velocity.X, velocity.Y);
-
-		velocity /= screenScale;
-
-		velocity.Y *= -1;
-
-		FVector2D aimerPosition = AimerSlot->GetPosition();
-
-		FVector2D desiredNextPosition = aimerPosition + velocity;
-
-		nextPosition = (desiredNextPosition.Size() > borderRadius) ? desiredNextPosition.GetSafeNormal() * borderRadius : desiredNextPosition;
-
-		UE_LOG(LogTemp, Warning, TEXT("nextPosition: %s"), *nextPosition.ToString());
-		UE_LOG(LogTemp, Warning, TEXT("velocity: %s"), *velocity.ToString());
-
-
-		AimerSlot->SetPosition(nextPosition);
-	}
-}
-
 void UAimerBase::UpdateWidget()
 {
 	FollowMouse();
 }
 
-void UAimerBase::SetBorderRadius(float newBorderRadius)
+void UAimerBase::FollowMouse()
 {
-	borderRadius = newBorderRadius;
+	if (Slot && GetOwningPlayer())
+	{
+		TObjectPtr<UCanvasPanelSlot> AimerSlot = Cast<UCanvasPanelSlot>(Slot);
+
+		FVector2D Velocity;
+		GetOwningPlayer()->GetInputMouseDelta(Velocity.X, Velocity.Y);
+
+		Velocity /= ScreenScale;
+
+		Velocity.Y *= -1;
+
+		FVector2D AimerPosition = AimerSlot->GetPosition();
+
+		FVector2D DesiredNextPosition = AimerPosition + Velocity;
+
+		FVector2D NextPosition = (DesiredNextPosition.Size() > BorderRadius) ? DesiredNextPosition.GetSafeNormal() * BorderRadius : DesiredNextPosition;
+
+		AimerSlot->SetPosition(NextPosition);
+	}
 }
 
-void UAimerBase::SetScreenScale(float newScreenScale)
+void UAimerBase::SetBorderRadius(float NewBorderRadius)
 {
-	screenScale = newScreenScale;
+	BorderRadius = NewBorderRadius;
+}
+
+void UAimerBase::SetScreenScale(float NewScreenScale)
+{
+	ScreenScale = NewScreenScale;
+}
+
+FVector2D UAimerBase::GetSlotPosition()
+{
+	checkf(Slot, TEXT("Slot undefined."));
+
+	TObjectPtr<UCanvasPanelSlot> AimerSlot = Cast<UCanvasPanelSlot>(Slot);
+
+	return AimerSlot->GetPosition();
 }
 
