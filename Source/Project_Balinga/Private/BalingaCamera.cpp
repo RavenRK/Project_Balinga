@@ -34,7 +34,7 @@ void UBalingaCamera::Dive_CamSettings(UCameraComponent* Camera, USpringArmCompon
 	float CurrentArmLength = SpringArm->TargetArmLength;
 
 	float MinSpeed = 0.0f;
-	float MaxSpeed = 1500.0f;
+	float MaxSpeed = 4500;
 
 	float MinFOV = 90.0f;
 	float MaxFOV = 125.0f;

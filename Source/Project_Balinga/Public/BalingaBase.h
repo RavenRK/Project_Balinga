@@ -63,6 +63,7 @@ public:
 	float MoveSpeed = 750;
 
 	FTimerHandle AttackCooldownTimer;
+
 protected:
 	virtual void BeginPlay() override;
 
