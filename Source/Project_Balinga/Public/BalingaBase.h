@@ -6,8 +6,9 @@
 #include "GameFramework/Character.h"
 
 #include "Components/SphereComponent.h"
-#include "BaseItem.h"
 
+#include "BaseItem.h"				//Items
+#include "BalingaStateMachine.h"	//State machine
 
 #include "BalingaBase.generated.h"
 
@@ -24,13 +25,10 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Balinga Movement")
 	class UBalingaMovement* BalingaMovement;
-
 	UPROPERTY()
 	TObjectPtr<USceneComponent> LeftLiftArrow;
-
 	UPROPERTY()
 	TObjectPtr<USceneComponent> RightLiftArrow;
-
 	UPROPERTY()
 	TObjectPtr<USceneComponent> DragArrow;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
@@ -51,6 +49,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Help")
 	float bDoesThisWork = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class ABalingaStateMachine* StateMachine;
 
 	//Ground parameters
 	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
@@ -76,7 +77,6 @@ public:
 
 	void StartJump();
 	void EndJump();
-
 	void Land();
 
 	int camMode = 0;

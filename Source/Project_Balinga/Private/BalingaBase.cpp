@@ -7,7 +7,6 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
-//!
 #include "BalingaCamera.h"
 
 #include "DrawDebugHelpers.h"
@@ -19,16 +18,23 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	//State Machine
+	StateMachine = CreateDefaultSubobject<ABalingaStateMachine>(TEXT("State Machine"));
+
+	//Custom Movement Component
 	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
 	BalingaCamera = Cast<UBalingaCamera>(GetCharacterMovement());
 
+	//Spring Arm
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->bUsePawnControlRotation = true;
 
+	//Camera
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(SpringArm);
 	
+	//Attck Sphere
 	AttackSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AttackSphere"));
 	AttackSphere->SetupAttachment(RootComponent);
 	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -46,6 +52,8 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	StateMachine->InitStateMachine();
 
 	BalingaMovement->JumpZVelocity = JumpVelocity;
 	BalingaMovement->GravityScale = BaseGravityScale;
