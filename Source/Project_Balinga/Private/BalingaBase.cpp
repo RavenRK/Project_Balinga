@@ -92,7 +92,7 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 	{
 		if (bPressedJump)
 		{
-			// Set up check for max coyote time and distance travelled since in air to decide coyote jump or flap
+			// Should set up check for max coyote time and distance travelled since in air to decide coyote jump or flap
 			const bool bFirstJump = JumpCurrentCount == 0;
 			if (BalingaMovement->IsFalling() || BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
 			{

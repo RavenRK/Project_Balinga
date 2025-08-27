@@ -144,11 +144,13 @@ TArray<FVector> UBalingaMovement::CalcGlideForceAndTorque(FVector GivenVelocity,
 	TArray<FVector> ForcesAndTorques;
 	ForcesAndTorques.Init(FVector::ZeroVector, FORCES_MAX + TORQUES_MAX);
 
-	ForcesAndTorques[FORCES_Gravity] = -GetGravityDirection() * GetGravityZ() * Mass;
+	// Calc forces and torques that don't need args
+
+	ForcesAndTorques[FORCES_Gravity] = -GetGravityDirection() * GetGravityZ() * Mass; // Gravity is in acceleration for some reason
 
 	ForcesAndTorques[FORCES_Thrust] = ThrustThisFrame;
 	
-	// Prep method params
+	// Prep method args
 
 	FVector FlowVelocity = GivenVelocity + GivenWindVelocity;
 	FVector FlowDirection = FlowVelocity.GetSafeNormal();
@@ -162,6 +164,8 @@ TArray<FVector> UBalingaMovement::CalcGlideForceAndTorque(FVector GivenVelocity,
 
 	WingDirection = (ActorForward /* - (AimerPosition.Y / 60 * ActorUp * AimerAoaScale)*/).GetSafeNormal();
 	AngleOfAttack = CalcAngleOfAttack(GivenVelocity, ActorRight, ActorUp);
+
+	// Calc forces and torques
 
 	TArray<FVector> WingLifts = CalcLifts(FlowVelocity, DesiredDifference, ActorRight, ActorForward, ActorUp, DeltaTime);
 	ForcesAndTorques[FORCES_LeftWingLift] = WingLifts[0];
@@ -190,13 +194,13 @@ TArray<FVector> UBalingaMovement::CalcGlideForceAndTorque(FVector GivenVelocity,
 
 TArray<FVector> UBalingaMovement::CalcLifts(FVector FlowVelocity, FVector DesiredDifference, FVector ActorRight, FVector ActorForward, FVector ActorUp, float DeltaTime)
 {
-	// Don't count velocity going in the right direction towards lift's velocity squared (might not work, check later)
-	FVector SomethingIndependentVelocity = FlowVelocity - FlowVelocity.ProjectOnTo(ActorRight);
-	float VelocityDiff = FlowVelocity.Size() - SomethingIndependentVelocity.Size();
-	GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Black, FString::Printf(TEXT("Lift velocity difference: [%s]"), *FString::SanitizeFloat(VelocityDiff)));
+	// Don't count velocity that is is right to the forlift's velocity squared (should work, but check more when rotation is done)
+	FVector RightIndependentVelocity = FlowVelocity - FlowVelocity.ProjectOnTo(ActorRight);
+	float VelocityDiff = FlowVelocity.Size() - RightIndependentVelocity.Size();
+	//GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Black, FString::Printf(TEXT("Lift velocity difference: [%s]"), *FString::SanitizeFloat(VelocityDiff)));
 
-	FVector LiftDirection = FVector::CrossProduct(SomethingIndependentVelocity.GetSafeNormal(), ActorRight);
-	FVector Lift = FMath::Square(SomethingIndependentVelocity.Size()) * LiftDirection * LiftScale * 0.5;
+	FVector LiftDirection = FVector::CrossProduct(RightIndependentVelocity.GetSafeNormal(), ActorRight);
+	FVector Lift = FMath::Square(RightIndependentVelocity.Size()) * LiftDirection * LiftScale * 0.5;
 
 	// Clamping AoA gives us the lift curve we want
 	float ClampedAoa = (FMath::Abs(AngleOfAttack) > FMath::DegreesToRadians(45)) ? FMath::DegreesToRadians(45) * FMath::Sign(AngleOfAttack) : AngleOfAttack;
@@ -208,13 +212,13 @@ TArray<FVector> UBalingaMovement::CalcLifts(FVector FlowVelocity, FVector Desire
 	if (Lift.Size() != 0) // Prevents NaN from zero divisor
 	{
 		// Check if the next Aoa sign is different to this one, if so overshoot the Aoa less or not at all
-		float AssumedAoaSign = CalcAoaSign(SomethingIndependentVelocity + LiftAccel, ActorRight, ActorUp);
+		float AssumedAoaSign = CalcAoaSign(RightIndependentVelocity + LiftAccel, ActorRight, ActorUp);
 	
 		if (AssumedAoaSign != FMath::Sign(AngleOfAttack))
 		{
 			LiftAccel = Lift / LiftCoefficient / Mass * DeltaTime;
 
-			FVector AoaDifference = (WingDirection - SomethingIndependentVelocity.GetSafeNormal());
+			FVector AoaDifference = (WingDirection - RightIndependentVelocity.GetSafeNormal());
 			float AoaLiftProjectionScale = (AoaDifference.Dot(LiftAccel) / LiftAccel.Size());
 			LiftCoefficient = FMath::Abs(LiftCoefficient * AoaLiftProjectionScale) * FMath::Sign(AngleOfAttack);
 			LiftAccel *= LiftCoefficient;
@@ -716,7 +720,7 @@ uint8 UBalingaMovement::FSavedMove_Balinga::GetCompressedFlags() const
 	return result;
 }
 
-// Idk why not declaring or defining it at all isn't an option, the guy did it so I shall too
+// Idk why not declaring or defining it at all isn't an option, delgoodie did it so I shall too
 UBalingaMovement::FNetworkPredictionData_Client_Balinga::FNetworkPredictionData_Client_Balinga(const UCharacterMovementComponent& ClientMovement)
 	: Super(ClientMovement)
 {
