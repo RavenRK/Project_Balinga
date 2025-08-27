@@ -2,6 +2,8 @@
 
 
 #include "BalingaStateMachine.h"
+#include "BaseState.h"
+
 
 ABalingaStateMachine::ABalingaStateMachine()
 {
@@ -16,7 +18,7 @@ void ABalingaStateMachine::BeginPlay()
 void ABalingaStateMachine::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (bCanTickState)
+	if (bCanTickState && CurrentState && CurrentState->bCanTickState)
 	{
 		CurrentState->OnTickState();
 	}
@@ -60,13 +62,9 @@ void ABalingaStateMachine::SwitchStateByKey(FString KeyState)
 
 				if (StateHistory.Num() >= StateHistoryLimit)
 				{
-					StateHistory.Push(CurrentState);
+					StateHistory.RemoveAt(0); 
 				}
-				else
-				{
-					StateHistory.RemoveAt(0);
-					StateHistory.Push(CurrentState);
-				}
+				StateHistory.Push(CurrentState);
 
 				CurrentState = NewState;
 			}

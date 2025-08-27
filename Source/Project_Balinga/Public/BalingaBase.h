@@ -4,15 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-
-#include "Components/SphereComponent.h"
-
-#include "BaseItem.h"				//Items
-#include "BalingaStateMachine.h"	//State machine
-
 #include "BalingaBase.generated.h"
 
 class CameraController;
+class ABaseItem;
+class ABalingaStateMachine;
+class SphereComponent;
 
 UCLASS()
 class ABalingaBase : public ACharacter

@@ -6,17 +6,15 @@
 #include "UObject/NoExportTypes.h"
 #include "BaseState.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class PROJECT_BALINGA_API UBaseState : public UObject
 {
-public:
 	GENERATED_BODY()
 
+public:
+
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	bool bCanTickStae = false;
+	bool bCanTickState = false;
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	bool bCanRepeat = false;
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)

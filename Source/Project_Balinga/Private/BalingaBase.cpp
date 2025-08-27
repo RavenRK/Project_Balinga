@@ -2,15 +2,20 @@
 
 
 #include "BalingaBase.h"
+
+#include "BalingaMovement.h"		//Custom Movement
 #include "GameFramework/CharacterMovementComponent.h"
-#include "BalingaMovement.h"
-#include "Camera/CameraComponent.h"
+
+#include "BalingaCamera.h"			//Camera
 #include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 
-#include "BalingaCamera.h"
+#include "BaseItem.h"				//Items
+#include "BalingaStateMachine.h"	//State machine
 
-#include "DrawDebugHelpers.h"
+#include "DrawDebugHelpers.h"		//Debug
 #include "Logging/LogMacros.h"
+#include "Components/SphereComponent.h"
 
 // Sets default values
 ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)

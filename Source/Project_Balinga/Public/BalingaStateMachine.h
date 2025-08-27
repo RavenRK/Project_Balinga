@@ -4,10 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-
-#include "BaseState.h"
-
 #include "BalingaStateMachine.generated.h"
+
+class BaseState;
 
 UCLASS()
 class PROJECT_BALINGA_API ABalingaStateMachine : public AActor
@@ -37,7 +36,7 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	UBaseState* CurrentState = nullptr;
 
-	UPROPERTY();
+	UPROPERTY()
 	TMap<FString, UBaseState*> StateMap;
 
 	UFUNCTION(BlueprintCallable, Category = "State Machine")
