@@ -2,16 +2,20 @@
 
 
 #include "BalingaBase.h"
+
+#include "BalingaMovement.h"		//Custom Movement
 #include "GameFramework/CharacterMovementComponent.h"
-#include "BalingaMovement.h"
-#include "Camera/CameraComponent.h"
+
+#include "BalingaCamera.h"			//Camera
 #include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 
-//!
-#include "BalingaCamera.h"
+#include "BaseItem.h"				//Items
+#include "BalingaStateMachine.h"	//State machine
 
-#include "DrawDebugHelpers.h"
+#include "DrawDebugHelpers.h"		//Debug
 #include "Logging/LogMacros.h"
+#include "Components/SphereComponent.h"
 
 // Sets default values
 ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
@@ -19,16 +23,23 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	//State Machine
+	StateMachine = CreateDefaultSubobject<ABalingaStateMachine>(TEXT("State Machine"));
+
+	//Custom Movement Component
 	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
 	BalingaCamera = Cast<UBalingaCamera>(GetCharacterMovement());
 
+	//Spring Arm
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->bUsePawnControlRotation = true;
 
+	//Camera
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(SpringArm);
 	
+	//Attck Sphere
 	AttackSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AttackSphere"));
 	AttackSphere->SetupAttachment(RootComponent);
 	AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -46,6 +57,8 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	StateMachine->InitStateMachine();
 
 	BalingaMovement->JumpZVelocity = JumpVelocity;
 	BalingaMovement->GravityScale = BaseGravityScale;
@@ -94,11 +107,11 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 		{
 			// Should set up check for max coyote time and distance travelled since in air to decide coyote jump or flap
 			const bool bFirstJump = JumpCurrentCount == 0;
-			if (BalingaMovement->IsFalling() || BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
+			if (BalingaMovement->IsFalling() || BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
 			{
-				if (!BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
+				if (!BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
 				{
-					BalingaMovement->EnterGlide();
+					BalingaMovement->EnterFly();
 				}
 
 				// Should check if we can eventually
@@ -128,7 +141,7 @@ void ABalingaBase::StartJump()
 {
 	Jump();
 
-	if (!BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
+	if (!BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
 	{
 		GetCharacterMovement()->GravityScale = JumpGravityScale;
 	}

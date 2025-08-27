@@ -6,7 +6,7 @@
 #include "UI/AimerBase.h"
 #include "BalingaControllerBase.h"
 
-void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
+void UBalingaMovement::PhysFly(float DeltaTime, int32 Iterations)
 {
 	if (DeltaTime < MIN_TICK_TIME)
 	{
@@ -17,7 +17,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 
 	while (AccumulatedDeltaTime >= FixedDeltaTime)
 	{
-		TArray<FVector> CurrentForcesAndTorques = CalcGlideForceAndTorque(Velocity, AngularVelocity, WindVelocity, FixedDeltaTime);
+		TArray<FVector> CurrentForcesAndTorques = CalcForceAndTorque(Velocity, AngularVelocity, WindVelocity, FixedDeltaTime);
 
 		TArray CurrentForces = TArray<FVector>(&CurrentForcesAndTorques.GetData()[0], FORCES_MAX);
 		FVector CurrentForce = FVector::ZeroVector;
@@ -29,7 +29,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 
 		FVector PredictedVelocity = Velocity + CalcForceAccel(CurrentForce, FixedDeltaTime * PredictionScale);
 		FVector PredictedAngularVelocity = AngularVelocity + CalcTorqueAccel(CurrentTorque, FixedDeltaTime * PredictionScale);
-		TArray<FVector> PredictedForcesAndTorques = CalcGlideForceAndTorque(PredictedVelocity, PredictedAngularVelocity, WindVelocity, FixedDeltaTime);
+		TArray<FVector> PredictedForcesAndTorques = CalcForceAndTorque(PredictedVelocity, PredictedAngularVelocity, WindVelocity, FixedDeltaTime);
 
 		TArray<FVector> PredictedForces = TArray<FVector>(&PredictedForcesAndTorques.GetData()[0], FORCES_MAX);
 		TArray<FVector> PredictedTorques = TArray<FVector>(&PredictedForcesAndTorques.GetData()[FORCES_MAX], TORQUES_MAX);
@@ -50,14 +50,9 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 		FVector AverageAccel = CalcForceAccel(AverageForce, FixedDeltaTime);
 		FVector NewVelocity = Velocity + AverageAccel;
 		
-		float NewSpeedToSpeedRatio = (NewVelocity.Size() / Velocity.Size());
-		float LimitedSpeedScale = NewSpeedToSpeedRatio;
-		if (bShouldLimitFlightSpeed)
-		{
-			LimitedSpeedScale = CalcSpeedLimiterScale(Velocity, NewVelocity);
-		}
+		float LimitedSpeedScale = CalcSpeedLimiterScale(Velocity, NewVelocity);
 
-		NewVelocity = NewVelocity / NewSpeedToSpeedRatio * LimitedSpeedScale;
+		NewVelocity = NewVelocity / (NewVelocity.Size() / Velocity.Size()) * LimitedSpeedScale;
 		
 		Velocity = NewVelocity;
 
@@ -79,7 +74,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 		FVector AdjustedAngularVelocity = AngularVelocity * FixedDeltaTime;
 		FQuat NewRotation = FQuat::MakeFromEuler(AdjustedAngularVelocity) * OldRotation;
 
-		SafeMoveUpdatedComponent(AdjustedVelocity, NewRotation, true, Hit); // Actually moves and rotates everything
+		SafeMoveUpdatedComponent(AdjustedVelocity, OldRotation, true, Hit); // Actually moves and rotates everything
 
 		// Slides if we collide with a surface
 		if (Hit.Time < 1.f)
@@ -139,7 +134,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 	}
 }
 
-TArray<FVector> UBalingaMovement::CalcGlideForceAndTorque(FVector GivenVelocity, FVector GivenAngularVelocity, FVector GivenWindVelocity, float DeltaTime)
+TArray<FVector> UBalingaMovement::CalcForceAndTorque(FVector GivenVelocity, FVector GivenAngularVelocity, FVector GivenWindVelocity, float DeltaTime)
 {
 	TArray<FVector> ForcesAndTorques;
 	ForcesAndTorques.Init(FVector::ZeroVector, FORCES_MAX + TORQUES_MAX);
@@ -184,10 +179,10 @@ TArray<FVector> UBalingaMovement::CalcGlideForceAndTorque(FVector GivenVelocity,
 	{
 		LiftRoll = CalcLiftRoll(WingLifts, FlowVelocity, ActorRight, ActorForward, ActorUp);
 	}
-	ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll] = LiftRoll;
+	ForcesAndTorquesTorques[FORCES_MAX + TORQUES_LiftRoll] = LiftRoll;
 
 	FVector AngularDrag = GivenAngularVelocity.GetSafeNormal() * FMath::Square(GivenAngularVelocity.Size()) * -1.0f * 0.5 * AngularDragScale;
-	ForcesAndTorques[FORCES_MAX + TORQUES_AngularDrag] = AngularDrag;
+	ForcesAndTorquesTorques[FORCES_MAX + TORQUES_AngularDrag] = AngularDrag;
 
 	return ForcesAndTorques;
 }
@@ -207,7 +202,7 @@ TArray<FVector> UBalingaMovement::CalcLifts(FVector FlowVelocity, FVector Desire
 	LiftCoefficient = FMath::Sin(ClampedAoa * 4);
 	Lift *= LiftCoefficient;
 
-	FVector LiftAccel = CalcForceAccel(Lift, DeltaTime);
+	FVector LiftAccel = Lift / Mass * DeltaTime;
 
 	if (Lift.Size() != 0) // Prevents NaN from zero divisor
 	{
@@ -373,7 +368,7 @@ FVector UBalingaMovement::CalcDesiredDiffDirection(FVector FlowDirection, FVecto
 
 float UBalingaMovement::CalcAngleOfAttack(FVector GivenVelocity, FVector ActorRight, FVector ActorUp)
 {
-	FVector SomethingIndependentVelocity = GivenVelocity - GivenVelocity.ProjectOnTo(ActorRight);
+	FVector SomethingIndependentVelocity = GivenVelocity - GivenVelocity.ProjectOnToNormal(ActorRight);
 
 	float AoaSign = CalcAoaSign(SomethingIndependentVelocity, ActorRight, ActorUp);
 	AoaDot = FMath::Abs(WingDirection.Dot(SomethingIndependentVelocity.GetSafeNormal()));
@@ -382,7 +377,7 @@ float UBalingaMovement::CalcAngleOfAttack(FVector GivenVelocity, FVector ActorRi
 
 float UBalingaMovement::CalcAoaSign(FVector GivenVelocity, FVector ActorRight, FVector ActorUp)
 {
-	FVector SomethingIndependentVelocity = GivenVelocity - GivenVelocity.ProjectOnTo(ActorRight);
+	FVector SomethingIndependentVelocity = GivenVelocity - GivenVelocity.ProjectOnToNormal(ActorRight);
 	ActorUp = CharacterOwner->GetActorUpVector();
 
 	FVector AoaDifference = (WingDirection - SomethingIndependentVelocity.GetSafeNormal());
@@ -416,11 +411,6 @@ FVector UBalingaMovement::CalcTorqueAccel(FVector Torque, float DeltaTime)
 {
 	return Torque / MomentInertia * DeltaTime;
 }
-FVector UBalingaMovement::CalcTorqueFromForceAtPos(FVector Force, FVector Position)
-{	
-	return Force.Cross(Position);
-}
-
 float UBalingaMovement::CalcSpeedLimiterScale(FVector GivenVelocity, FVector NewVelocity)
 {
 	float Speed = GivenVelocity.Size();
@@ -431,22 +421,15 @@ float UBalingaMovement::CalcSpeedLimiterScale(FVector GivenVelocity, FVector New
 		Speed = 1;
 	}
 
-	// Speed is velocity's magnitude, velocity change (accel) and speed change can be very different
 	float NewSpeedToSpeedRatio = NewVelocity.Size() / Speed;
-	float SpeedChangeToSpeedRatio = NewSpeedToSpeedRatio - 1; 
+	float SpeedChangeToSpeedRatio = NewSpeedToSpeedRatio - 1; // Speed is velocity's magnitude, velocity change (accel) and speed change can be very different
 
 	float MaxSpeedChangeToSpeedRatio = (MaxFlightSpeed - ActualSpeed) / Speed;
-	float ClampedMaxSpeedChangeToSpeedRatio = FMath::Max(0, MaxSpeedChangeToSpeedRatio); // Don't change the sign of speed change
-	ClampedMaxSpeedChangeToSpeedRatio = FMath::Min(1, ClampedMaxSpeedChangeToSpeedRatio); // Don't speed up, only slow down
+	float ClampedMaxSpeedChangeToSpeedRatio = FMath::Max(0, MaxSpeedChangeToSpeedRatio); // Should not change the sign of speed change
+	ClampedMaxSpeedChangeToSpeedRatio = FMath::Min(1, ClampedMaxSpeedChangeToSpeedRatio); // Should not speed up, only slow downo
 
-	float LimitedNewSpeedToSpeedRatio = 1 + SpeedChangeToSpeedRatio * ClampedMaxSpeedChangeToSpeedRatio;
-	// Don't limit speed decreases
-	if (!(FMath::Sign(SpeedChangeToSpeedRatio) > 0))
-	{
-		LimitedNewSpeedToSpeedRatio = NewSpeedToSpeedRatio;
-	}
-	// Clamp SpeedChange if it's going to overshoot
-	if (SpeedChangeToSpeedRatio * ClampedMaxSpeedChangeToSpeedRatio > MaxSpeedChangeToSpeedRatio)
+	float LimitedNewSpeedToSpeedRatio = (FMath::Sign(SpeedChangeToSpeedRatio) > 0) ? 1 + SpeedChangeToSpeedRatio * (ClampedMaxSpeedChangeToSpeedRatio) : NewSpeedToSpeedRatio;
+	if (SpeedChangeToSpeedRatio * ClampedMaxSpeedChangeToSpeedRatio > ClampedMaxSpeedChangeToSpeedRatio)
 	{
 		LimitedNewSpeedToSpeedRatio = 1 + MaxSpeedChangeToSpeedRatio;
 	}
@@ -461,6 +444,10 @@ float UBalingaMovement::CalcSpeedLimiterScale(FVector GivenVelocity, FVector New
 	}
 
 	return LimitedNewSpeedToSpeedRatio;
+}
+FVector UBalingaMovement::CalcTorqueFromForceAtPos(FVector Force, FVector Position)
+{	
+	return Force.Cross(Position);
 }
 
 void UBalingaMovement::InitializeComponent()
@@ -486,6 +473,10 @@ void UBalingaMovement::InitializeComponent()
 	SurfaceArea = DefaultSurfaceArea;
 	WindVelocity = DefaultWindVelocity;
 	AirDensity = DefaultAirDensity;
+
+	LastDesiredDifference = FVector::ZeroVector;
+	SmoothVelocity = FVector::ZeroVector;
+
 }
 
 void UBalingaMovement::PhysCustom(float deltaTime, int32 Iterations)
@@ -494,15 +485,15 @@ void UBalingaMovement::PhysCustom(float deltaTime, int32 Iterations)
 
 	switch (CustomMovementMode)
 	{
-	case CMOVE_Glide:
-		PhysGlide(deltaTime, Iterations);
+	case CMOVE_Fly:
+		PhysFly(deltaTime, Iterations);
 		break;
 	default:
 		UE_LOG(LogTemp, Fatal, TEXT("Invalid movement mode."))
 	}
 }
 
-void UBalingaMovement::EnterGlide()
+void UBalingaMovement::EnterFly()
 {
 	if (!bShouldSnapRotation)
 	{
@@ -523,12 +514,12 @@ void UBalingaMovement::EnterGlide()
 
 	AngularVelocity = FVector::ZeroVector;
 
-	SetMovementMode(MOVE_Custom, CMOVE_Glide);
+	SetMovementMode(MOVE_Custom, CMOVE_Fly);
 }
-void UBalingaMovement::ExitGlide()
+void UBalingaMovement::ExitFly()
 {
-	CharacterOwner->bUseControllerRotationPitch = false;
-	CharacterOwner->bUseControllerRotationRoll = false;
+	//CharacterOwner->bUseControllerRotationPitch = true;
+	//CharacterOwner->bUseControllerRotationRoll = true;
 	CharacterOwner->bUseControllerRotationYaw = true;
 
 
@@ -537,6 +528,7 @@ void UBalingaMovement::ExitGlide()
 
 void UBalingaMovement::FlapPressed()
 {
+	// Thrust is applied in the direction the character is facing
 	if (CharacterOwner->bPressedJump)
 	{
 		FVector ActorForward = CharacterOwner->GetActorForwardVector();
@@ -548,7 +540,7 @@ void UBalingaMovement::FlapPressed()
 
 void UBalingaMovement::LandPressed()
 {
-	ExitGlide();
+	ExitFly();
 }
 void UBalingaMovement::LandReleased() {}
 
