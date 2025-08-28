@@ -107,11 +107,11 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 		{
 			// Should set up check for max coyote time and distance travelled since in air to decide coyote jump or flap
 			const bool bFirstJump = JumpCurrentCount == 0;
-			if (BalingaMovement->IsFalling() || BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
+			if (BalingaMovement->IsFalling() || BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
 			{
-				if (!BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
+				if (!BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
 				{
-					BalingaMovement->EnterFly();
+					BalingaMovement->EnterGlide();
 				}
 
 				// Should check if we can eventually
@@ -141,7 +141,7 @@ void ABalingaBase::StartJump()
 {
 	Jump();
 
-	if (!BalingaMovement->IsCustomMovementMode(CMOVE_Fly))
+	if (!BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
 	{
 		GetCharacterMovement()->GravityScale = JumpGravityScale;
 	}

@@ -14,7 +14,7 @@ UENUM(BlueprintType)
 enum ECustomMovementMode
 {
 	CMOVE_None UMETA(Hidden), 
-	CMOVE_Fly UMETA(DisplayName = "Fly"),
+	CMOVE_Glide UMETA(DisplayName = "Glide"),
 	CMOVE_MAX UMETA(Hidden),
 };
 
@@ -25,8 +25,8 @@ class UBalingaMovement : public UCharacterMovementComponent
 	typedef UCharacterMovementComponent Super;
 
 public:
-	void EnterFly();
-	void ExitFly();
+	void EnterGlide();
+	void ExitGlide();
 
 	void FlapPressed();
 
@@ -38,51 +38,49 @@ private:
 
 	bool bWantsToLand;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Speed") bool bShouldLimitSpeed;
-	UPROPERTY(EditDefaultsOnly, Category = "Speed") float MaxFlightSpeed;
+	UPROPERTY(EditDefaultsOnly, Category = "Speed") bool bShouldLimitGlideSpeed;
+	UPROPERTY(EditDefaultsOnly, Category = "Speed") float MaxGlideSpeed;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Delta Time") float PredictionScale;
 	float AccumulatedDeltaTime;
 	UPROPERTY(EditDefaultsOnly, Category = "Delta Time") float FixedDeltaTimeFraction;
 	float FixedDeltaTime;
 
-	FVector LastDesiredDifference;
-	FVector SmoothVelocity;
-	UPROPERTY(EditDefaultsOnly, Category = "Smoothing (Might delete)") FVector SmoothTime;
-
-	UPROPERTY(EditDefaultsOnly) float DefaultThrustScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Thrust") float DefaultThrustScale;	
 	float ThrustScale;
 	FVector ThrustThisFrame;
 
-	UPROPERTY(EditDefaultsOnly) float DefaultDragScale;
-	UPROPERTY(EditDefaultsOnly) float DefaultMinDragDesiredScale;
-	UPROPERTY(EditDefaultsOnly) float DefaultDragDesiredScaleScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Drag") float DefaultDragScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Drag") float DefaultMinDragDesiredScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Drag") float DefaultDragDesiredScaleScale;
 	float DragScale;
 	float MinDragDesiredScale;
 	float DragDesiredScaleScale;
 
-	UPROPERTY(EditDefaultsOnly) float DefaultAngularDragScale;
-	float AngularDragScale;
-
-	UPROPERTY(EditDefaultsOnly) float DefaultLiftScale;
-	UPROPERTY(EditDefaultsOnly) float DefaultMinLiftDesiredScale;
-	UPROPERTY(EditDefaultsOnly) float DefaultLiftDesiredScaleScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Lift") float DefaultLiftScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Lift") float DefaultMinLiftDesiredScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Lift") float DefaultLiftDesiredScaleScale;
 	float LiftScale;
 	float MinLiftDesiredScale;
 	float LiftDesiredScaleScale;
 
-	UPROPERTY(EditDefaultsOnly) bool bShouldSnapRotation;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") bool bShouldSnapRotation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MomentInertia;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AimerAoaScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float WingTorqueScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float WingMidpointDistance;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MinWingMuscleForce;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float DefaultAngularDragScale;
+	float AngularDragScale;
 
 	FVector AngularVelocity;
-	UPROPERTY(EditDefaultsOnly) float MomentInertia;
-	UPROPERTY(EditDefaultsOnly) float AimerAoaScale;
-	UPROPERTY(EditDefaultsOnly) float WingTorqueScale;
-	UPROPERTY(EditDefaultsOnly) float WingMidpointDistance;
-	UPROPERTY(EditDefaultsOnly) float MinWingMuscleForce;
 
-	UPROPERTY(EditDefaultsOnly) float DefaultSurfaceArea;
-	UPROPERTY(EditDefaultsOnly) FVector DefaultWindVelocity;
-	UPROPERTY(EditDefaultsOnly) float DefaultAirDensity;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Coefficient") float DefaultSurfaceArea;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Coefficient") FVector DefaultWindVelocity;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Coefficient") float DefaultAirDensity;
 	float SurfaceArea;
 	FVector WindVelocity;
 	float AirDensity;
@@ -90,9 +88,9 @@ private:
 	UPROPERTY() TObjectPtr<ABalingaBase> BalingaOwner; // Used to access Balinga things outside CharacterOwner
 
 
-	void PhysFly(float DeltaTime, int32 Iterations);
+	void PhysGlide(float DeltaTime, int32 Iterations);
 
-	TArray<FVector> CalcForceAndTorque(FVector GivenVelocity, FVector GivenAngularVelocity, FVector GivenWindVelocity, float DeltaTime);
+	TArray<FVector> CalcGlideForceAndTorque(FVector GivenVelocity, FVector GivenAngularVelocity, FVector GivenWindVelocity, float DeltaTime);
 
 	TArray<FVector> CalcLifts(FVector FlowDirection, FVector DesiredDifference, FVector ActorRight, FVector ActorForward, FVector ActorUp, float DeltaTime);
 
@@ -116,7 +114,7 @@ private:
 	void AddTorqueToAngularVel(FVector Torque, float DeltaTime);
 	FVector CalcTorqueAccel(FVector Torque, float DeltaTime);
 
-	float CalcSpeedLimiterScale(FVector GivenVelocity, FVector NewVelocity);
+	float CalcLimitedNewSpeedScale(FVector GivenVelocity, FVector NewVelocity);
 
 	UPROPERTY(EditAnywhere) bool bShouldEnableDebug;
 
