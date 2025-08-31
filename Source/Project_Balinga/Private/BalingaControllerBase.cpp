@@ -35,7 +35,6 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 		// In Air / Flight
 		EnhInputComponent->BindAction(LandAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Land);
-		//EnhInputComponent->BindAction(CamAction, ETriggerEvent::Started, this, &ABalingaControllerBase::CamChange);
 
 		// Abilities 
 		EnhInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
@@ -85,12 +84,6 @@ void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue
 	if (Balinga) Balinga->DropItem();
 }
 #pragma endregion
-
-
-//void ABalingaControllerBase::CamChange(const FInputActionValue& InputActionValue)
-//{
-//	if (Balinga) Balinga->CamChange();
-//}
 
 FVector2D ABalingaControllerBase::GetAimerPosition()
 {

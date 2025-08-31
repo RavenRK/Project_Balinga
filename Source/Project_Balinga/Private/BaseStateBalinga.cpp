@@ -2,25 +2,36 @@
 
 
 #include "BaseStateBalinga.h"
-#include "BalingaBase.h"              
 #include "BalingaControllerBase.h"
-
+#include "BalingaBase.h"  
 
 void UBaseStateBalinga::OnEnterState(AActor* StateOwner)
 {
 	Super::OnEnterState(StateOwner);
 
-    if (!BalingaRef)
-        BalingaRef = Cast<ABalingaBase>(StateOwner);
-
-    if (!BalingaControllerRef && BalingaRef)
+    BalingaRef = Cast<ABalingaBase>(StateOwner);
+    if (BalingaRef)
+    {
         BalingaControllerRef = Cast<ABalingaControllerBase>(BalingaRef->GetController());
-
-
+    }
 
 }
 
 void UBaseStateBalinga::OnExitState()
 {
 
+}
+
+void UBaseStateBalinga::PlayAnimationMontage(UAnimMontage* Montage)
+{
+    if (BalingaRef && Montage)
+    {
+        if (USkeletalMeshComponent* Mesh = BalingaRef->GetMesh())
+        {
+            if (UAnimInstance* AnimInstance = Mesh->GetAnimInstance())
+            {
+                AnimInstance->Montage_Play(Montage);
+            }
+        }
+    }
 }

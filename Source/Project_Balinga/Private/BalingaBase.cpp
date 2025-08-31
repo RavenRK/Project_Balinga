@@ -11,10 +11,10 @@
 #include "Camera/CameraComponent.h"
 
 #include "BaseItem.h"				//Items
-#include "BalingaStateMachine.h"	//State machine
+#include "BalingaStatemachine.h"	//State Machine
 
 #include "DrawDebugHelpers.h"		//Debug
-#include "Logging/LogMacros.h"
+#include "Logging/LogMacros.h"		
 #include "Components/SphereComponent.h"
 
 // Sets default values
@@ -24,7 +24,8 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 
 	//State Machine
-	StateMachine = CreateDefaultSubobject<ABalingaStateMachine>(TEXT("State Machine"));
+	StateMachine = CreateDefaultSubobject<UBalingaStatemachine>(TEXT("State Machine"));
+	StateMachine->InitStateMachine();
 
 	//Custom Movement Component
 	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
@@ -57,8 +58,6 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
-
-	StateMachine->InitStateMachine();
 
 	BalingaMovement->JumpZVelocity = JumpVelocity;
 	BalingaMovement->GravityScale = BaseGravityScale;

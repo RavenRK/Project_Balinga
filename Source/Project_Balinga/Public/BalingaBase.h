@@ -8,8 +8,8 @@
 
 class CameraController;
 class ABaseItem;
-class ABalingaStateMachine;
 class SphereComponent;
+class UBalingaStatemachine;
 
 UCLASS()
 class ABalingaBase : public ACharacter
@@ -41,14 +41,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Balinga Movement|Other|Attack")
 	class USphereComponent* AttackSphere;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Balinga State Machine")
+	UBalingaStatemachine* StateMachine;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	class UBalingaCamera* BalingaCamera;
 
 	UPROPERTY(EditAnywhere, Category = "Help")
 	float bDoesThisWork = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class ABalingaStateMachine* StateMachine;
 
 	//Ground parameters
 	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
