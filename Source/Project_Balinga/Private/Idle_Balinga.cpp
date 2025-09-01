@@ -2,31 +2,41 @@
 
 
 #include "Idle_Balinga.h"
-#include "BalingaBase.h"  
+#include "BalingaStatemachine.h"
+
+UIdle_Balinga::UIdle_Balinga()
+{
+	StateName = "Idle";
+	bCanTickState = true;
+	bCanRepeat = true;
+}
 
 void UIdle_Balinga::OnEnterState(AActor* StateOwner)
 {
-    BalingaAnim->CurrentStateName = CurrentState->StateName;
+	Super::OnEnterState(StateOwner);
+
 }
 
 void UIdle_Balinga::OnTickState()
 {
     if (BalingaRef)
     {
-        // If the player has velocity, they should leave Idle
-        FVector Velocity = BalingaRef->GetVelocity();
-        if (Velocity.SizeSquared() > 0.1f)
+        float Speed = BalingaRef->GetVelocity().Size();
+
+        // If the character starts moving -> switch to Move state
+        if (Speed > 1)
         {
-            // TODO: Switch to Run/Walk state through StateMachine
-            UE_LOG(LogTemp, Log, TEXT("%s wants to leave Idle"), *BalingaRef->GetName());
+            if (UBalingaStatemachine* SM = BalingaRef->FindComponentByClass<UBalingaStatemachine>())
+            {
+                SM->SwitchStateByKey("Move");
+            }
         }
     }
 }
 
 void UIdle_Balinga::OnExitState()
 {
-    if (BalingaRef)
-    {
-        UE_LOG(LogTemp, Log, TEXT("%s exited Idle State"), *BalingaRef->GetName());
-    }
+	Super::OnExitState();
+
 }
+

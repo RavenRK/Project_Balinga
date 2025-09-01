@@ -37,9 +37,9 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 		EnhInputComponent->BindAction(LandAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Land);
 
 		// Abilities 
-		EnhInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
+		EnhInputComponent->BindAction(LookAction,   ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
 		EnhInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
-		EnhInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &ABalingaControllerBase::DropItem);
+		EnhInputComponent->BindAction(DropAction,   ETriggerEvent::Started, this, &ABalingaControllerBase::DropItem);
 
 	}
 	else   {checkf(false, TEXT("One or more input actions were not specified."));}
@@ -53,13 +53,12 @@ void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 	const FVector2D LookAxisVector = InputActionValue.Get<FVector2D>();
 	AddYawInput(LookAxisVector.X);
 	AddPitchInput(LookAxisVector.Y);
-
-	
 }
 
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {
 	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
+
 	if (Balinga)
 	{
 		Balinga->AddMovementInput(Balinga->GetActorForwardVector(), MovementVector.Y);
@@ -69,8 +68,7 @@ void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 
 void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)	{if (Balinga) Balinga->StartJump();}
 void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)		{if (Balinga) Balinga->EndJump();  }
-
-void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) { if (Balinga) Balinga->Land(); }
+void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue)        {if (Balinga) Balinga->Land(); }
 #pragma endregion
 
 #pragma region Abilities

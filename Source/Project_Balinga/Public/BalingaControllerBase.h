@@ -1,5 +1,6 @@
 
 
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -60,8 +61,6 @@ protected:
 	void EndJump(const FInputActionValue& InputActionValue);
 
 	void Land(const FInputActionValue& InputActionValue);
-
-	void CamChange(const FInputActionValue& InputActionValue); //new camera change thing
 
 	void Attack(const FInputActionValue& InputActionValue);
 	void DropItem(const FInputActionValue& InputActionValue);

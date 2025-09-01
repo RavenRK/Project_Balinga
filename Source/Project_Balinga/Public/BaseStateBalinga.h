@@ -4,11 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "BaseState.h"
+#include "BalingaBase.h"
 
 #include "BaseStateBalinga.generated.h"
-
-class ABalingaBase;
-class ABalingaControllerBase;
 
 UCLASS()
 class PROJECT_BALINGA_API UBaseStateBalinga : public UBaseState

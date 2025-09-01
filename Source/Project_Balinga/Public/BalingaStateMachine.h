@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "BalingaAnimInstance.h"
+
 #include "BalingaStatemachine.generated.h"
 
 class UBaseState;
@@ -25,13 +26,14 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
     UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "State Machine")
-    FName InitialState;
+    FName InitialState = "Idle";
 
     UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "State Machine")
     TMap<FName, TSubclassOf<UBaseState>> AvailableStates;
 
+    //DEBUG
     UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "State Machine Debug")
-    bool bDebug = false;
+    bool bDebug = true;
 
     UPROPERTY(BlueprintReadOnly)
     TArray<UBaseState*> StateHistory;
