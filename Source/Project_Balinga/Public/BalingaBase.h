@@ -8,8 +8,8 @@
 
 class CameraController;
 class ABaseItem;
-class ABalingaStateMachine;
 class SphereComponent;
+class UBalingaStatemachine;
 
 UCLASS()
 class ABalingaBase : public ACharacter
@@ -31,7 +31,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
 	class ABalingaControllerBase* BalingaController;
 
-
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"));
 	class UCameraComponent* Camera;
 
@@ -41,6 +40,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Balinga Movement|Other|Attack")
 	class USphereComponent* AttackSphere;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Balinga State Machine")
+	UBalingaStatemachine* StateMachine;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	class UBalingaCamera* BalingaCamera;
 
@@ -97,11 +99,22 @@ public:
 		const FHitResult& SweepResult
 	);
 
+protected:
+	virtual void BeginPlay() override;
+
+public:	
+	virtual void Tick(float DeltaTime) override;
+	
+	virtual void CheckJumpInput(float DeltaTime) override;
+	void PickUpItem(ABaseItem* Item);
+
+	//to bind functionality to input
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	int camMode = 0;
+
 	UPROPERTY()
 	ABaseItem* HeldItem = nullptr;
-
-	void DropItem();
-	void PickUpItem(ABaseItem* Item);
 
 #pragma endregion
 

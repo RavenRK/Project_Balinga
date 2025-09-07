@@ -12,6 +12,8 @@ class PROJECT_BALINGA_API UBaseState : public UObject
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(BlueprintReadOnly)
+	TWeakObjectPtr<AActor> OwnerActor;
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	bool bCanTickState = false;

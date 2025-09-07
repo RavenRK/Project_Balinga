@@ -3,17 +3,16 @@
 #include "BalingaBase.h"
 
 #include "BalingaMovement.h"		//Custom Movement
-#include "GameFramework/CharacterMovementComponent.h"
 
 #include "BalingaCamera.h"			//Camera
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 
 #include "BaseItem.h"				//Items
-#include "BalingaStateMachine.h"	//State machine
+#include "BalingaStatemachine.h"	//State Machine
 
 #include "DrawDebugHelpers.h"		//Debug
-#include "Logging/LogMacros.h"
+#include "Logging/LogMacros.h"		
 #include "Components/SphereComponent.h"
 
 // Sets default values
@@ -23,7 +22,8 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 
 	//State Machine
-	StateMachine = CreateDefaultSubobject<ABalingaStateMachine>(TEXT("State Machine"));
+	StateMachine = CreateDefaultSubobject<UBalingaStatemachine>(TEXT("State Machine"));
+	StateMachine->InitStateMachine();
 
 	//Custom Movement Component
 	BalingaMovement = Cast<UBalingaMovement>(GetCharacterMovement());
@@ -53,17 +53,18 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 
 }
 
+
+
 void ABalingaBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	StateMachine->InitStateMachine();
-
-	BalingaMovement->JumpZVelocity = JumpVelocity;
-	BalingaMovement->GravityScale = BaseGravityScale;
+	//BalingaMovement->JumpZVelocity = JumpVelocity;
+	//BalingaMovement->GravityScale = BaseGravityScale;
 	BalingaMovement->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	AttackSphere->OnComponentBeginOverlap.AddDynamic(this, &ABalingaBase::OnAttackOverlap);
+
 }
 
 void ABalingaBase::Tick(float DeltaTime)
@@ -95,7 +96,6 @@ void ABalingaBase::Tick(float DeltaTime)
 void ABalingaBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {Super::SetupPlayerInputComponent(PlayerInputComponent);}
 
-#pragma region GroundedMovement
 void ABalingaBase::CheckJumpInput(float DeltaTime)
 {
 	JumpCurrentCountPreJump = JumpCurrentCount;
@@ -136,63 +136,9 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 		}
 	}
 }
-void ABalingaBase::StartJump()	
-{
-	Jump();
 
-	if (!BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
-	{
-		GetCharacterMovement()->GravityScale = JumpGravityScale;
-	}
-}
-void ABalingaBase::EndJump()	{GetCharacterMovement()->GravityScale = BaseGravityScale;}
-#pragma endregion
 
-void ABalingaBase::Land()
-{
-	BalingaMovement->LandPressed();
-}
-
-#pragma region Abilities
-//enable AttackSphere and start CD
-void ABalingaBase::TryAttack()
-{
-	if (bCanAttack)
-	{
-		AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-
-		TArray<AActor*> OverlappingActors;
-		AttackSphere->GetOverlappingActors(OverlappingActors);
-
-		for (AActor* Actor : OverlappingActors)
-		{
-			OnAttackOverlap(nullptr, Actor, nullptr, 0, false, FHitResult());
-		}
-
-		AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-		bCanAttack = false;
-		GetWorld()->GetTimerManager().SetTimer
-		(
-			AttackCooldownTimer,		//Timercooldown Timer
-			this,						
-			&ABalingaBase::AttackCD,
-			AttackCooldown, 
-			false
-		);
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(1, 2, FColor::Cyan, FString("on CD attack"));
-	}
-}
-void ABalingaBase::AttackCD() 
-{ 
-	GEngine->AddOnScreenDebugMessage(2, 2, FColor::Cyan, FString("can Attack"));
-	bCanAttack = true;
-}
-void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (OtherActor && OtherActor != this && HeldItem == nullptr)
 	{
@@ -206,7 +152,6 @@ void ABalingaBase::OnAttackOverlap(UPrimitiveComponent* OverlappedComponent, AAc
 		}
 	}
 }
-
 void ABalingaBase::PickUpItem(ABaseItem* Item)
 {
 	if (!Item) return;
@@ -214,12 +159,3 @@ void ABalingaBase::PickUpItem(ABaseItem* Item)
 	Item->ItemPickUp(AttackSphere);
 	HeldItem = Item;
 }
-void ABalingaBase::DropItem()
-{
-	if (!HeldItem) return;
-
-	HeldItem->ItemDrop();
-	HeldItem = nullptr;
-}
-#pragma endregion
-

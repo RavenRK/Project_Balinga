@@ -3,53 +3,64 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "BalingaStateMachine.generated.h"
+#include "Components/ActorComponent.h"
+#include "BalingaAnimInstance.h"
 
-class BaseState;
+#include "BalingaStatemachine.generated.h"
 
-UCLASS()
-class PROJECT_BALINGA_API ABalingaStateMachine : public AActor
+class UBaseState;
+
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+class PROJECT_BALINGA_API UBalingaStatemachine : public UActorComponent
 {
 	GENERATED_BODY()
-	
+
 public:	
-	ABalingaStateMachine();
+	UBalingaStatemachine();
 
 protected:
 	virtual void BeginPlay() override;
 
 public:	
-	virtual void Tick(float DeltaTime) override;
 
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "State Machine")
-	FString InitialState;
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "State Machine")
-	TMap<FString, TSubclassOf<UBaseState>> AvailableStates;
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "State Machine Debug")
-	bool bDebug = false;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	UPROPERTY(BlueprintReadOnly)
-	TArray<UBaseState*> StateHistory;
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "State Machine Debug", meta = (ClampMin = "0", ClampMix = "10", UImin = "0", UIMax = "10"))
-	int32 StateHistoryLimit = 5;
-	UPROPERTY(BlueprintReadOnly)
-	UBaseState* CurrentState = nullptr;
+    UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "State Machine")
+    FName InitialState = "Idle";
 
-	UPROPERTY()
-	TMap<FString, UBaseState*> StateMap;
+    UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "State Machine")
+    TMap<FName, TSubclassOf<UBaseState>> AvailableStates;
 
-	UFUNCTION(BlueprintCallable, Category = "State Machine")
-	void SwitchStateByKey(FString KeyState);
+    //DEBUG
+    UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "State Machine Debug")
+    bool bDebug = true;
 
-	UFUNCTION(BlueprintCallable, Category = "State Machine")
-	void SwitchState(UBaseState* NewState);
+    UPROPERTY(BlueprintReadOnly)
+    TArray<UBaseState*> StateHistory;
 
-	UFUNCTION(BlueprintCallable, Category = "State Machine")
-	void InitStateMachine();
+    UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "State Machine Debug", meta = (ClampMin = "0", ClampMix = "10", UImin = "0", UIMax = "10"))
+    int32 StateHistoryLimit = 5;
+
+    UPROPERTY(BlueprintReadOnly)
+    UBaseState* CurrentState = nullptr;
+
+    UPROPERTY()
+    class UBalingaAnimInstance* AnimInstance;
+
+    UPROPERTY()
+    TMap<FName, UBaseState*> StateMap;
+
+    UFUNCTION(BlueprintCallable, Category = "State Machine")
+    void SwitchStateByKey(FName KeyState);
+
+    UFUNCTION(BlueprintCallable, Category = "State Machine")
+    void SwitchState(UBaseState* NewState);
+
+    UFUNCTION(BlueprintCallable, Category = "State Machine")
+    void InitStateMachine();
 
 private:
 
-	bool bCanTickState = false;
-	void InitState();
+    bool bCanTickState = false;
+    void InitState();
 };

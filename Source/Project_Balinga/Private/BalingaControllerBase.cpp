@@ -5,7 +5,7 @@
 #include "InputActionValue.h"
 #include "BalingaMovement.h"
 #include "UI/BalingaHudBase.h"
-
+#include "BaseItem.h"				//Items
 
 void ABalingaControllerBase::OnPossess(APawn* aPawn)
 {
@@ -35,12 +35,11 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 
 		// In Air / Flight
 		EnhInputComponent->BindAction(LandAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Land);
-		//EnhInputComponent->BindAction(CamAction, ETriggerEvent::Started, this, &ABalingaControllerBase::CamChange);
 
 		// Abilities 
-		EnhInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
+		EnhInputComponent->BindAction(LookAction,   ETriggerEvent::Triggered, this, &ABalingaControllerBase::Look);
 		EnhInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABalingaControllerBase::Attack);
-		EnhInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &ABalingaControllerBase::DropItem);
+		EnhInputComponent->BindAction(DropAction,   ETriggerEvent::Started, this, &ABalingaControllerBase::DropItem);
 
 	}
 	else   {checkf(false, TEXT("One or more input actions were not specified."));}
@@ -54,43 +53,87 @@ void ABalingaControllerBase::Look(const FInputActionValue& InputActionValue)
 	const FVector2D LookAxisVector = InputActionValue.Get<FVector2D>();
 	AddYawInput(LookAxisVector.X);
 	AddPitchInput(LookAxisVector.Y);
-
-	
 }
-
 void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 {
 	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
+
 	if (Balinga)
 	{
 		Balinga->AddMovementInput(Balinga->GetActorForwardVector(), MovementVector.Y);
 		Balinga->AddMovementInput(Balinga->GetActorRightVector(), MovementVector.X);
 	}
 }
+void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)
+{
+	Balinga->Jump();
 
-void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)	{if (Balinga) Balinga->StartJump();}
-void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)		{if (Balinga) Balinga->EndJump();  }
+	if (!BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
+	{
+		Balinga->GetCharacterMovement()->GravityScale = JumpGravityScale;
+	}
+}
+void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)
+{
+	Balinga->GetCharacterMovement()->GravityScale = BaseGravityScale;
+}
 
-void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) { if (Balinga) Balinga->Land(); }
-#pragma endregion
+void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) 
+{
+	BalingaMovement->LandPressed();
+}
+#pragma endregion // look, move, jump, land
 
 #pragma region Abilities
 void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) 
 { 
-	if (Balinga) Balinga->TryAttack(); 
+	TryAttack(); 
 }
-
 void ABalingaControllerBase::DropItem(const FInputActionValue & InputActionValue)
 {
-	if (Balinga) Balinga->DropItem();
+	if (!Balinga->HeldItem) return;
+
+	ABaseItem* HeldItem = Balinga->HeldItem;
+
+	HeldItem->ItemDrop();
+	Balinga->HeldItem = nullptr;
 }
-#pragma endregion
+void ABalingaControllerBase::TryAttack()
+{
+	if (bCanAttack)
+	{
+		Balinga->AttackSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
+		TArray<AActor*> OverlappingActors;
+		Balinga->AttackSphere->GetOverlappingActors(OverlappingActors);
 
-//void ABalingaControllerBase::CamChange(const FInputActionValue& InputActionValue)
-//{
-//	if (Balinga) Balinga->CamChange();
-//}
+		for (AActor* Actor : OverlappingActors)
+		{
+			Balinga->OnAttackOverlap(nullptr, Actor, nullptr, 0, false, FHitResult());
+		}
+
+		Balinga->AttackSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		bCanAttack = false;
+		GetWorld()->GetTimerManager().SetTimer
+		(
+			AttackCooldownTimer,		//Timercooldown Timer
+			this,
+			&ABalingaControllerBase::AttackCD,
+			AttackCooldown,
+			false
+		);
+	}
+	else
+	{GEngine->AddOnScreenDebugMessage(1, 2, FColor::Cyan, FString("on CD attack"));}
+}
+void ABalingaControllerBase::AttackCD()
+{
+	GEngine->AddOnScreenDebugMessage(2, 2, FColor::Cyan, FString("can Attack"));
+	bCanAttack = true;
+}
+
+#pragma endregion //attack and stuff
 
 FVector2D ABalingaControllerBase::GetAimerPosition()
 {

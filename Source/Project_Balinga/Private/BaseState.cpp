@@ -5,6 +5,7 @@
 
 void UBaseState::OnEnterState(AActor* StateOwner)
 {
+	OwnerActor = StateOwner;
 }
 
 void UBaseState::OnTickState()
