@@ -29,7 +29,7 @@ public:
 	UPROPERTY()
 	TObjectPtr<USceneComponent> DragArrow;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
-	class ABalingaControllerBase* ControllerBase;
+	class ABalingaControllerBase* BalingaController;
 
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"));
@@ -43,9 +43,6 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	class UBalingaCamera* BalingaCamera;
-
-	UPROPERTY(EditAnywhere, Category = "Help")
-	float bDoesThisWork = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class ABalingaStateMachine* StateMachine;

@@ -15,7 +15,6 @@ void UBalingaCamera::Fly_CamSettings(UCameraComponent* Camera, USpringArmCompone
 
 	Camera->SetFieldOfView(NewFOV);
 	SpringArm->TargetArmLength = NewArmLength;
-	SpringArm->bUsePawnControlRotation = true;
 }
 void UBalingaCamera::ground_CamSettings(UCameraComponent* Camera, USpringArmComponent* SpringArm, float DeltaTime)
 {
@@ -26,7 +25,6 @@ void UBalingaCamera::ground_CamSettings(UCameraComponent* Camera, USpringArmComp
 
 	Camera->SetFieldOfView(NewFOV);
 	SpringArm->TargetArmLength = NewArmLength;
-	SpringArm->bUsePawnControlRotation = true;
 }
 void UBalingaCamera::Dive_CamSettings(UCameraComponent* Camera, USpringArmComponent* SpringArm, float DeltaTime, float Speed)
 {
@@ -51,7 +49,6 @@ void UBalingaCamera::Dive_CamSettings(UCameraComponent* Camera, USpringArmCompon
 
 	Camera->SetFieldOfView(NewFOV);
 	SpringArm->TargetArmLength = NewArmLength;
-	SpringArm->bUsePawnControlRotation = true;
 }
 void UBalingaCamera::Crash_CamSettings(UCameraComponent* Camera, USpringArmComponent* SpringArm, float DeltaTime)
 {

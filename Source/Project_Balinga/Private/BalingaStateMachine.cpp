@@ -92,7 +92,7 @@ void ABalingaStateMachine::SwitchState(UBaseState* NewState)
 
 void ABalingaStateMachine::InitStateMachine()
 {
-	SwitchStateByKey(InitialState);
+	//SwitchStateByKey(InitialState);
 }
 void ABalingaStateMachine::InitState()
 {

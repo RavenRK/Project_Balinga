@@ -28,6 +28,10 @@
 		{
 			"Name": "ModelingToolsEditorMode",
 			"Enabled": true
+		},
+		{
+			"Name": "DataCharts",
+			"Enabled": true
 		}
 	]
 }

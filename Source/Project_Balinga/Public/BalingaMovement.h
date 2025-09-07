@@ -22,6 +22,7 @@ enum ECustomMovementMode
 UCLASS(Blueprintable, Category="Movement")
 class UBalingaMovement : public UCharacterMovementComponent
 {
+	typedef TFunction<FVector(void)>&& CalcForceOrTorqueDef;
 	typedef UCharacterMovementComponent Super;
 
 public:
@@ -33,18 +34,24 @@ public:
 	void LandPressed();
 	void LandReleased();
 
+	template<typename CalcForceOrTorque
+	>
+	void TestTorqueAtDifferentDT(CalcForceOrTorque CalcTorque, CalcForceOrTorqueDef CalcOtherTorque, float StartDeltaTime, float DeltaDeltaTime, int IterationAmount);
+
 private:
 	GENERATED_BODY()
 
 	bool bWantsToLand;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Speed") bool bShouldLimitGlideSpeed;
-	UPROPERTY(EditDefaultsOnly, Category = "Speed") float MaxGlideSpeed;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Delta Time") float PredictionScale;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "General") float PredictionScale;
+	UPROPERTY(EditDefaultsOnly, Category = "General") bool bShouldAverageForcesAndTorques;
+	UPROPERTY(EditDefaultsOnly, Category = "General") float FixedDeltaTimeDivisor;
 	float AccumulatedDeltaTime;
-	UPROPERTY(EditDefaultsOnly, Category = "Delta Time") float FixedDeltaTimeFraction;
 	float FixedDeltaTime;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") bool bShouldLimitGlideSpeed;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") float MaxGlideSpeed;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Thrust") float DefaultThrustScale;	
 	float ThrustScale;
@@ -71,10 +78,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AimerAoaScale;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float WingTorqueScale;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float WingMidpointDistance;
-	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MinWingMuscleForce;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MinRollAccel;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float DefaultAngularDragScale;
-	float AngularDragScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float DefaultAngularDampScale;
+	float AngularDampScale;
 
 	FVector AngularVelocity;
 
@@ -92,12 +99,19 @@ private:
 
 	TArray<FVector> CalcGlideForceAndTorque(FVector GivenVelocity, FVector GivenAngularVelocity, FVector GivenWindVelocity, float DeltaTime);
 
+
+	FVector CalcLift(FVector FlowDirection, FVector DesiredDifference, FVector ActorRight, FVector ActorForward, FVector ActorUp, float DeltaTime);
 	TArray<FVector> CalcLifts(FVector FlowDirection, FVector DesiredDifference, FVector ActorRight, FVector ActorForward, FVector ActorUp, float DeltaTime);
 
 	FVector CalcDrag(FVector FlowDirection, FVector DesiredDifferenceDirection, float DeltaTime);
 
 	FVector CalcLiftRoll(TArray<FVector> WingLifts, FVector ActorForward, FVector ActorUp);
-	FVector CalcLiftRoll(TArray<FVector> WingLifts, FVector FlowVelocity, FVector ActorRight, FVector ActorForward, FVector ActorUp);
+	FVector CalcLiftRoll(FVector FlowVelocity, FVector ActorRight, FVector ActorForward, FVector ActorUp);
+
+	FVector CalcLiftPitch(TArray<FVector> WingLifts, FVector ActorRight, FVector ActorUp);
+
+	FVector CalcAngularDamp(FVector GivenAngularVelocity, float DeltaTime);
+	FVector CalcAngularDamp(FVector GivenAngularVelocity, float GivenAngularDampScale, float DeltaTime);
 
 	FVector CalcDesiredDiffDirection(FVector FlowDirection, FVector ActorForward);
 
@@ -177,7 +191,7 @@ private:
 	enum ETorques
 	{
 		TORQUES_LiftRoll,
-		TORQUES_AngularDrag,
+		TORQUES_AngularDamp,
 		TORQUES_MAX
 	};
 

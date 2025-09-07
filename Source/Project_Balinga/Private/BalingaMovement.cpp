@@ -5,6 +5,7 @@
 #include "MathUtils.h"
 #include "UI/AimerBase.h"
 #include "BalingaControllerBase.h"
+#include "GameFramework/SpringArmComponent.h"
 
 void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 {
@@ -29,32 +30,45 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 		FVector CurrentTorque = FVector::ZeroVector;
 		for (int i = 0; i < TORQUES_MAX; i++) { CurrentTorque += CurrentTorques[i]; }
 
-		FVector PredictedVelocity = Velocity + CalcForceAccel(CurrentForce, FixedDeltaTime * PredictionScale);
-		FVector PredictedAngularVelocity = AngularVelocity + CalcTorqueAccel(CurrentTorque, FixedDeltaTime * PredictionScale);
-		TArray<FVector> PredictedForcesAndTorques = CalcGlideForceAndTorque(PredictedVelocity, PredictedAngularVelocity, WindVelocity, FixedDeltaTime);
+		TArray<FVector> ChosenForces = CurrentForces;
+		TArray<FVector> ChosenTorques = CurrentTorques;
+		FVector ChosenForce = CurrentForce;
+		FVector ChosenTorque = CurrentTorque;
 
-		TArray<FVector> PredictedForces = TArray<FVector>(&PredictedForcesAndTorques.GetData()[0], FORCES_MAX);
-		TArray<FVector> PredictedTorques = TArray<FVector>(&PredictedForcesAndTorques.GetData()[FORCES_MAX], TORQUES_MAX);
+		if (bShouldAverageForcesAndTorques)
+		{
+			FVector PredictedVelocity = Velocity + CalcForceAccel(CurrentForce, FixedDeltaTime * PredictionScale);
+			FVector PredictedAngularVelocity = AngularVelocity + CalcTorqueAccel(CurrentTorque, FixedDeltaTime * PredictionScale);
+			TArray<FVector> PredictedForcesAndTorques = CalcGlideForceAndTorque(PredictedVelocity, PredictedAngularVelocity, WindVelocity, FixedDeltaTime);
 
-		// Averaged forces feel smoother, but harder to debug (can't average AoA and some other stuff)
-		TArray<FVector> AverageForces;
-		AverageForces.Init(FVector::ZeroVector, FORCES_MAX);
-		for (int i = 0; i < FORCES_MAX; i++) { AverageForces[i] = (CurrentForces[i] + PredictedForces[i]) / 2; }
-		FVector AverageForce = FVector::ZeroVector;
-		for (int i = 0; i < FORCES_MAX; i++) { AverageForce += AverageForces[i]; }
+			TArray<FVector> PredictedForces = TArray<FVector>(&PredictedForcesAndTorques.GetData()[0], FORCES_MAX);
+			TArray<FVector> PredictedTorques = TArray<FVector>(&PredictedForcesAndTorques.GetData()[FORCES_MAX], TORQUES_MAX);
 
-		TArray<FVector> AverageTorques;
-		AverageTorques.Init(FVector::ZeroVector, TORQUES_MAX);
-		for (int i = 0; i < TORQUES_MAX; i++) { AverageTorques[i] = (CurrentTorques[i] + PredictedTorques[i]) / 2; }
-		FVector AverageTorque = FVector::ZeroVector;
-		for (int i = 0; i < TORQUES_MAX; i++) { AverageTorque += AverageTorques[i]; }
+			// Averaged forces feel smoother, but harder to debug (can't average AoA and some other stuff)
+			TArray<FVector> AverageForces;
+			AverageForces.Init(FVector::ZeroVector, FORCES_MAX);
+			for (int i = 0; i < FORCES_MAX; i++) { AverageForces[i] = (CurrentForces[i] + PredictedForces[i]) / 2; }
+			FVector AverageForce = FVector::ZeroVector;
+			for (int i = 0; i < FORCES_MAX; i++) { AverageForce += AverageForces[i]; }
+
+			TArray<FVector> AverageTorques;
+			AverageTorques.Init(FVector::ZeroVector, TORQUES_MAX);
+			for (int i = 0; i < TORQUES_MAX; i++) { AverageTorques[i] = (CurrentTorques[i] + PredictedTorques[i]) / 2; }
+			FVector AverageTorque = FVector::ZeroVector;
+			for (int i = 0; i < TORQUES_MAX; i++) { AverageTorque += AverageTorques[i]; }
+
+			ChosenForces = AverageForces;
+			ChosenTorques = AverageTorques;
+			ChosenForce = AverageForce;
+			ChosenTorque = AverageTorque;
+		}
 
 		// Limit speed
 
-		FVector AverageAccel = CalcForceAccel(AverageForce, FixedDeltaTime);
-		FVector NewVelocity = Velocity + AverageAccel;
+		FVector ChosenAccel = CalcForceAccel(ChosenForce, FixedDeltaTime);
+		FVector NewVelocity = Velocity + ChosenAccel;
 		
-		float NewSpeedToSpeedRatio = (NewVelocity.Size() / Velocity.Size());
+		float NewSpeedToSpeedRatio = (NewVelocity.Size() / FMath::Max(1.0f, Velocity.Size()));
 		float LimitedNewSpeedScale = NewSpeedToSpeedRatio;
 		if (bShouldLimitGlideSpeed)
 		{
@@ -66,7 +80,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 
 		if (!bShouldSnapRotation)
 		{
-			AngularVelocity += CalcTorqueAccel(AverageTorque, FixedDeltaTime);
+			AngularVelocity += CalcTorqueAccel(ChosenTorque, FixedDeltaTime);
 		}
 
 		ThrustThisFrame = FVector::ZeroVector;
@@ -110,9 +124,9 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			float ArrowHeight = 20;
 			float ArrowWidth = 0.28;
 
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), LeftLiftPosition, LeftLiftPosition + CalcForceAccel(AverageForces[FORCES_LeftWingLift], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), RightLiftPosition, RightLiftPosition + CalcForceAccel(AverageForces[FORCES_RightWingLift], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + CalcForceAccel(AverageForces[FORCES_Drag], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Red, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), LeftLiftPosition, LeftLiftPosition + CalcForceAccel(ChosenForces[FORCES_LeftWingLift], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), RightLiftPosition, RightLiftPosition + CalcForceAccel(ChosenForces[FORCES_RightWingLift], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + CalcForceAccel(ChosenForces[FORCES_Drag], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Red, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
 
 			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), LeftLiftPosition, LeftLiftPosition + WingDirection * 140, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Blue);
 
@@ -120,9 +134,9 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 
 			GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Purple, FString::Printf(TEXT("Angle of Attack: [%s]"), *FString::SanitizeFloat(FMath::RadiansToDegrees(AngleOfAttack))));
 			GEngine->AddOnScreenDebugMessage(4, 100.0f, FColor::Magenta, FString::Printf(TEXT("Angle of Attack dot: [%s]"), *FString::SanitizeFloat(AoaDot)));
-			GEngine->AddOnScreenDebugMessage(5, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift accel: [%s]"), *(CalcForceAccel((AverageForces[EForces::FORCES_LeftWingLift] + AverageForces[FORCES_RightWingLift]), FixedDeltaTime)).ToCompactString()));
+			GEngine->AddOnScreenDebugMessage(5, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift accel: [%s]"), *(CalcForceAccel((ChosenForces[EForces::FORCES_LeftWingLift] + ChosenForces[FORCES_RightWingLift]), FixedDeltaTime)).ToCompactString()));
 			GEngine->AddOnScreenDebugMessage(6, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift coefficent: [%s]"), *FString::SanitizeFloat(LiftCoefficient)));
-			GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("Drag accel: [%s]"), *(CalcForceAccel(AverageForces[FORCES_Drag], FixedDeltaTime)).ToCompactString()));
+			GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("Drag accel: [%s]"), *(CalcForceAccel(ChosenForces[FORCES_Drag], FixedDeltaTime)).ToCompactString()));
 			GEngine->AddOnScreenDebugMessage(8, 100.0f, FColor::Red, FString::Printf(TEXT("Drag coefficient: [%s]"), *FString::SanitizeFloat(DragCoefficient)));
 
 			//GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Purple, FString::Printf(TEXT("Desired difference: [%s]"), *(FString::SanitizeFloat(DesiredDifference.X) + ", " + FString::SanitizeFloat(DesiredDifference.Y) + ", " + FString::SanitizeFloat(DesiredDifference.Z))));
@@ -134,8 +148,10 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			//GEngine->AddOnScreenDebugMessage(6, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift torque projection scale: [%s]"), *FString::SanitizeFloat(LiftTorqueProjectionScale)));
 			GEngine->AddOnScreenDebugMessage(9, 100.0f, FColor::Green, FString::Printf(TEXT("Angular velocity: [%s]"), *AngularVelocity.ToString()));
 			GEngine->AddOnScreenDebugMessage(10, 100.0f, FColor::Silver, FString::Printf(TEXT("Aimer position: [%s]"), *AimerPosition.ToString()));
-			GEngine->AddOnScreenDebugMessage(11, 100.0f, FColor::White, FString::Printf(TEXT("Wing roll: [%s]"), *CalcTorqueAccel(AverageTorques[TORQUES_LiftRoll], FixedDeltaTime).ToString()));
-			//GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Black, FString::Printf(TEXT("Right wing torque: [%s]"), *WingLiftTorqueAccels[1].ToString()));
+			GEngine->AddOnScreenDebugMessage(11, 100.0f, FColor::White, FString::Printf(TEXT("Wing roll: [%s]"), *CalcTorqueAccel(ChosenTorques[TORQUES_LiftRoll], FixedDeltaTime).ToString()));
+			GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Red, FString::Printf(TEXT("Angular damp: [%s]"), *CalcForceAccel(ChosenTorques[TORQUES_AngularDamp], FixedDeltaTime).ToString()));
+			FVector AngularDampAccel = CalcForceAccel(ChosenTorques[TORQUES_AngularDamp], FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Orange, FString::Printf(TEXT("Angular damp to velocity ratio: [%s]"), *FString::SanitizeFloat(AngularDampAccel.Size() / (AngularVelocity - AngularDampAccel).Size())));
 		}
 
 		AccumulatedDeltaTime -= FixedDeltaTime;
@@ -150,9 +166,9 @@ TArray<FVector> UBalingaMovement::CalcGlideForceAndTorque(FVector GivenVelocity,
 
 	// Calc forces and torques that don't need args
 
-	ForcesAndTorques[FORCES_Gravity] = -GetGravityDirection() * GetGravityZ() * Mass; // Gravity is in acceleration for some reason
+	ForcesAndTorques[FORCES_Gravity] = -GetGravityDirection() * GetGravityZ() * Mass; // Gravity is independent of mass
 
-	ForcesAndTorques[FORCES_Thrust] = ThrustThisFrame;
+	ForcesAndTorques[FORCES_Thrust] = ThrustThisFrame / DeltaTime; // Thrust is applied instantly, not over time
 	
 	// Prep method args
 
@@ -175,9 +191,7 @@ TArray<FVector> UBalingaMovement::CalcGlideForceAndTorque(FVector GivenVelocity,
 	ForcesAndTorques[FORCES_LeftWingLift] = WingLifts[0];
 	ForcesAndTorques[FORCES_RightWingLift] = WingLifts[1];
 
-	FVector Drag = CalcDrag(FlowVelocity, DesiredDiffDirection, DeltaTime);
-	DragAccel = CalcForceAccel(Drag, DeltaTime);
-	ForcesAndTorques[FORCES_Drag] = Drag;
+	ForcesAndTorques[FORCES_Drag] = CalcDrag(FlowVelocity, DesiredDiffDirection, DeltaTime);
 
 	FVector LiftRoll;
 	if (!(WingLifts[0] + WingLifts[1]).GetSafeNormal().IsZero()) // Cannot get direction from zero lift
@@ -186,16 +200,23 @@ TArray<FVector> UBalingaMovement::CalcGlideForceAndTorque(FVector GivenVelocity,
 	}
 	else 
 	{
-		LiftRoll = CalcLiftRoll(WingLifts, FlowVelocity, ActorRight, ActorForward, ActorUp);
+		LiftRoll = CalcLiftRoll(FlowVelocity, ActorRight, ActorForward, ActorUp);
 	}
 	ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll] = LiftRoll;
 
-	FVector AngularDrag = GivenAngularVelocity.GetSafeNormal() * FMath::Square(GivenAngularVelocity.Size()) * -1.0f * 0.5 * AngularDragScale;
-	ForcesAndTorques[FORCES_MAX + TORQUES_AngularDrag] = AngularDrag;
+	GivenAngularVelocity += CalcTorqueAccel(LiftRoll, DeltaTime);
+	
+	ForcesAndTorques[FORCES_MAX + TORQUES_AngularDamp] = CalcAngularDamp(GivenAngularVelocity, DeltaTime);
 
 	return ForcesAndTorques;
 }
 
+FVector UBalingaMovement::CalcLift(FVector FlowDirection, FVector DesiredDifference, FVector ActorRight, FVector ActorForward, FVector ActorUp, float DeltaTime)
+{
+	TArray<FVector> WingLifts = CalcLifts(FlowDirection, DesiredDifference, ActorRight, ActorForward, ActorUp, DeltaTime);
+
+	return WingLifts[0] + WingLifts[1];
+}
 TArray<FVector> UBalingaMovement::CalcLifts(FVector FlowVelocity, FVector DesiredDifference, FVector ActorRight, FVector ActorForward, FVector ActorUp, float DeltaTime)
 {
 	// Don't count velocity that is is right to the forlift's velocity squared (should work, but check more when rotation is done)
@@ -262,6 +283,7 @@ TArray<FVector> UBalingaMovement::CalcLifts(FVector FlowVelocity, FVector Desire
 	return TArray<FVector>{LeftWingLift, RightWingLift};
 }
 
+
 FVector UBalingaMovement::CalcDrag(FVector FlowVelocity, FVector DesiredDiffDirection, float DeltaTime)
 {
 	FVector FlowDirection = FlowVelocity.GetSafeNormal();
@@ -284,8 +306,8 @@ FVector UBalingaMovement::CalcDrag(FVector FlowVelocity, FVector DesiredDiffDire
 
 FVector UBalingaMovement::CalcLiftRoll(TArray<FVector> WingLifts, FVector ActorForward, FVector ActorUp)
 {
-	FVector MinMuscleForce = (WingLifts[0] + WingLifts[1]).GetSafeNormal() * MinWingMuscleForce;
-	//GEngine->AddOnScreenDebugMessage(14, 100.0f, FColor::Yellow, FString::Printf(TEXT("Wing force direction: [%s]"), *WingLifts[0].GetSafeNormal().ToString()));
+	FVector MinMuscleForce = (WingLifts[0] + WingLifts[1]).GetSafeNormal() * MinRollAccel;
+	GEngine->AddOnScreenDebugMessage(14, 100.0f, FColor::Yellow, FString::Printf(TEXT("Wing force direction: [%s]"), *WingLifts[0].GetSafeNormal().ToString()));
 
 	TArray<FVector> MinMuscleForces = { MinMuscleForce, MinMuscleForce };
 
@@ -301,7 +323,8 @@ FVector UBalingaMovement::CalcLiftRoll(TArray<FVector> WingLifts, FVector ActorF
 		MinMuscleForces[0] *= LeftWingLiftSize / RightWingLiftSize;
 	}
 
-	TArray<FVector> WingForces = (FMath::Max(WingLifts[0].Size(), WingLifts[1].Size()) > MinMuscleForce.Size()) ? WingLifts : MinMuscleForces;
+	//TArray<FVector> WingForces = (FMath::Max(WingLifts[0].Size(), WingLifts[1].Size()) > MinMuscleForce.Size()) ? WingLifts : MinMuscleForces;
+	TArray<FVector> WingForces = MinMuscleForces;
 	TArray<FVector> WingLiftTorques =
 	{
 		CalcTorqueFromForceAtPos(WingForces[0] * WingTorqueScale, CharacterOwner->GetActorRightVector() * WingMidpointDistance * -1),
@@ -318,16 +341,15 @@ FVector UBalingaMovement::CalcLiftRoll(TArray<FVector> WingLifts, FVector ActorF
 
 	//GEngine->AddOnScreenDebugMessage(16, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift torque projection scale: [%s]"), *FString::SanitizeFloat(LiftTorqueProjectionScale)));
 
-
 	FVector FinalLiftTorque = ActorForward * (WingLiftTorques[0] + WingLiftTorques[1]).Size() * LiftTorqueProjectionScale;
 	return FinalLiftTorque;
 }
-FVector UBalingaMovement::CalcLiftRoll(TArray<FVector> WingLifts, FVector FlowVelocity, FVector ActorRight, FVector ActorForward, FVector ActorUp)
+FVector UBalingaMovement::CalcLiftRoll(FVector FlowVelocity, FVector ActorRight, FVector ActorForward, FVector ActorUp)
 {
 	FVector SomethingIndependentVelocity = FlowVelocity - FlowVelocity.ProjectOnToNormal(ActorRight);
-	FVector LiftDirection = FVector::CrossProduct(FlowVelocity.GetSafeNormal(), ActorRight);
-	FVector MinMuscleForce = LiftDirection * MinWingMuscleForce;
-	//GEngine->AddOnScreenDebugMessage(14, 100.0f, FColor::Yellow, FString::Printf(TEXT("Wing force direction (was 0): [%s]"), *LiftDirection.ToString()));
+	FVector LiftDirection = FVector::CrossProduct(FlowVelocity.GetSafeNormal(), ActorRight).GetSafeNormal();
+	FVector MinMuscleForce = LiftDirection * MinRollAccel;
+	GEngine->AddOnScreenDebugMessage(14, 100.0f, FColor::Yellow, FString::Printf(TEXT("Wing force direction (was 0): [%s]"), *LiftDirection.ToString()));
 
 	TArray<FVector> MinMuscleForces = { MinMuscleForce, MinMuscleForce };
 
@@ -340,7 +362,8 @@ FVector UBalingaMovement::CalcLiftRoll(TArray<FVector> WingLifts, FVector FlowVe
 		MinMuscleForces[1] *= 1 - AimerPosition.GetAbs().X / 60;
 	}
 
-	TArray<FVector> WingForces = (FMath::Max(WingLifts[0].Size(), WingLifts[1].Size()) > MinMuscleForce.Size()) ? WingLifts : MinMuscleForces;
+	//TArray<FVector> WingForces = (FMath::Max(WingLifts[0].Size(), WingLifts[1].Size()) > MinMuscleForce.Size()) ? WingLifts : MinMuscleForces;
+	TArray<FVector> WingForces = MinMuscleForces;
 	TArray<FVector> WingLiftTorques =
 	{
 		CalcTorqueFromForceAtPos(WingForces[0] * WingTorqueScale, CharacterOwner->GetActorRightVector() * WingMidpointDistance * -1),
@@ -354,11 +377,58 @@ FVector UBalingaMovement::CalcLiftRoll(TArray<FVector> WingLifts, FVector FlowVe
 		//UE_LOG(LogTemp, Warning, TEXT("Lift size: [%s]"), *(WingLifts[0] + WingLifts[1]).ToString());
 	}
 	LiftTorqueProjectionScale = (FMath::IsNaN(LiftTorqueProjectionScale)) ? 0 : LiftTorqueProjectionScale;
-	//GEngine->AddOnScreenDebugMessage(16, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift torque projection scale: [%s]"), *FString::SanitizeFloat(LiftTorqueProjectionScale)));
+	GEngine->AddOnScreenDebugMessage(16, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift torque projection scale: [%s]"), *FString::SanitizeFloat(LiftTorqueProjectionScale)));
 
 	FVector FinalLiftTorque = ActorForward * (WingLiftTorques[0] + WingLiftTorques[1]).Size() * LiftTorqueProjectionScale;
 	return FinalLiftTorque;
-} 
+}
+
+FVector UBalingaMovement::CalcLiftPitch(TArray<FVector> WingLifts, FVector ActorRight, FVector ActorUp)
+{
+	FVector MinMuscleForce = (WingLifts[0] + WingLifts[1]).GetSafeNormal() * MinRollAccel;
+	
+
+	return FVector();
+}
+
+FVector UBalingaMovement::CalcAngularDamp(FVector GivenAngularVelocity, float DeltaTime)
+{
+	// AngularDampScale should be a range of 0 to FixedDeltaTimeDivisor
+	// We lose a AngularDampScale/FixedDeltaTimeDivisor fraction of speed every time step
+	float DeltaTimeBasedAngularDampScale = AngularDampScale;
+	FVector AngularDamp = -1 * (GivenAngularVelocity - GivenAngularVelocity * FMath::Pow(AngularDampScale, DeltaTime)) / DeltaTime;
+
+	// Just in case DeltaTime gets too large (this func doesn't automatically use fixedDT, it shouldn't),
+	// damping should not be able to change angular vel dir past 0
+	float GivenAngularVelocitySize = GivenAngularVelocity.Size();
+	float AngularDampAccelSize = CalcTorqueAccel(AngularDamp, DeltaTime).Size();
+	if (AngularDampAccelSize > GivenAngularVelocitySize)
+	{
+		AngularDamp *= (GivenAngularVelocitySize / AngularDampAccelSize);
+	}
+
+	return AngularDamp;
+}
+FVector UBalingaMovement::CalcAngularDamp(FVector GivenAngularVelocity, float GivenAngularDampScale, float DeltaTime)
+{
+
+	// AngularDampScale should be a range of 0 to FixedDeltaTimeDivisor
+	// We lose a AngularDampScale/FixedDeltaTimeDivisor fraction of speed every time step
+	float DeltaTimeBasedAngularDampScale = GivenAngularDampScale;
+	FVector AngularDamp = -1 * (GivenAngularVelocity - GivenAngularVelocity * FMath::Pow(GivenAngularDampScale, DeltaTime)) / DeltaTime;
+
+	// Just in case DeltaTime gets too large (this func doesn't automatically use fixedDT, it shouldn't),
+	// damping should not be able to change angular vel dir past 0
+	float GivenAngularVelocitySize = GivenAngularVelocity.Size();
+	float AngularDampAccelSize = CalcTorqueAccel(AngularDamp, DeltaTime).Size();
+	if (AngularDampAccelSize > GivenAngularVelocitySize)
+	{
+		AngularDamp *= (GivenAngularVelocitySize / AngularDampAccelSize);
+	}
+
+	return AngularDamp;
+}
+
 
 FVector UBalingaMovement::CalcDesiredDiffDirection(FVector FlowDirection, FVector ActorForward)
 {
@@ -430,11 +500,11 @@ float UBalingaMovement::CalcLimitedNewSpeedScale(FVector GivenVelocity, FVector 
 	// Max speed change gets smaller as we reach max speed so speed change gets smaller as we reach max speed too
 	// Speed becomes harder to increases as we reach 0, at which point we can't increase speed anymore
 
-	// Could use the max speed change in some easing or trigonometric function to limit speed in a non-linear different rate
+	// Could use the max speed change in some easing or trigonometric function to limit speed in a non-linear rate
 
 	float Speed = GivenVelocity.Size();
 	// Prevent zero divisor nan, and act in an expected way
-	float ActualSpeed = Speed;
+ 	float ActualSpeed = Speed;
 	if (Speed == 0)
 	{
 		Speed = 1;
@@ -477,7 +547,7 @@ void UBalingaMovement::InitializeComponent()
 
 	BalingaOwner = Cast<ABalingaBase>(GetOwner());
 
-	FixedDeltaTime = 1 / FixedDeltaTimeFraction;
+	FixedDeltaTime = 1 / FixedDeltaTimeDivisor;
 
 	ThrustScale = DefaultThrustScale;
 
@@ -485,7 +555,7 @@ void UBalingaMovement::InitializeComponent()
 	MinDragDesiredScale = DefaultMinDragDesiredScale;
 	DragDesiredScaleScale = DefaultDragDesiredScaleScale;
 	
-	AngularDragScale = DefaultAngularDragScale;
+	AngularDampScale = DefaultAngularDampScale;
 
 	LiftScale = DefaultLiftScale;
 	MinLiftDesiredScale = DefaultMinLiftDesiredScale;
@@ -512,11 +582,14 @@ void UBalingaMovement::PhysCustom(float deltaTime, int32 Iterations)
 
 void UBalingaMovement::EnterGlide()
 {
+	// Do this with Balinga functions and make some of these variables private
 	if (!bShouldSnapRotation)
 	{
 		CharacterOwner->bUseControllerRotationPitch = false;
 		CharacterOwner->bUseControllerRotationRoll = false;
 		CharacterOwner->bUseControllerRotationYaw = false;
+
+ 		BalingaOwner->SpringArm->bUsePawnControlRotation = false;
 	}
 
 	if (bShouldSnapRotation)
@@ -538,6 +611,7 @@ void UBalingaMovement::ExitGlide()
 	//CharacterOwner->bUseControllerRotationPitch = true;
 	//CharacterOwner->bUseControllerRotationRoll = true;
 	CharacterOwner->bUseControllerRotationYaw = true;
+	BalingaOwner->SpringArm->bUsePawnControlRotation = true;
 
 
 	SetMovementMode(MOVE_Falling);
@@ -557,9 +631,135 @@ void UBalingaMovement::FlapPressed()
 
 void UBalingaMovement::LandPressed()
 {
+	/*for (int i = 0; i < 30; i++)
+	{
+		int TestDeltaTimeDivisor = (30 + i);
+		float TestDeltaTime = 1 / float(TestDeltaTimeDivisor);
+		FVector TestWingRoll = FVector(500000, 0, 0);
+		for (float j = 0; j < TestDeltaTimeDivisor; j += 0.1)
+		{
+			float AngularDampToVelocityRatio;
+			FVector TestAngularVelocity = FVector::ZeroVector;
+
+			for (int k = 0; k < 10; k++)
+			{
+				TestAngularVelocity += CalcTorqueAccel(TestWingRoll, TestDeltaTime);
+				FVector AngularDamp = CalcAngularDamp(TestAngularVelocity, j, TestDeltaTime);
+				TestAngularVelocity += CalcTorqueAccel(AngularDamp, TestDeltaTime);
+				AngularDampToVelocityRatio = CalcTorqueAccel(AngularDamp, TestDeltaTime).Size() / TestAngularVelocity.Size();
+				UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(j), *FString::SanitizeFloat(AngularDampToVelocityRatio));
+				UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular velocity: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(j), *TestAngularVelocity.ToString());
+			}
+
+		}
+	}*/
+
+	float OldAngularDampToVelocityRatio = 0;
+	float OldAngularDampToVelocityRatioRatio = 0;
+	float OldAngularDampToVelocityRatioDifference = 0;
+	float OldAngularDampToVelocityRatioDiffDiff = 0;
+	for (int i = 0; i <= 210; i += 7)
+	{
+		int TestDeltaTimeDivisor = (30 + i);
+		float TestDeltaTime = 1 / float(TestDeltaTimeDivisor);
+		FVector TestWingRoll = FVector(5000, 0, 0);
+
+		float AngularDampToVelocityRatio = 0;
+		FVector TestAngularVelocity = FVector::ZeroVector;
+		float TestAngularDampScale = 0.5;
+
+		float AngularDampToVelocityRatioRatio = AngularDampToVelocityRatio / OldAngularDampToVelocityRatio;
+
+		for (float j = 0; j < 10; j++)
+		{
+
+			TestAngularVelocity += CalcTorqueAccel(TestWingRoll, TestDeltaTime);
+			FVector AngularDamp = CalcAngularDamp(TestAngularVelocity, TestAngularDampScale, TestDeltaTime);
+			FVector AngularDampAccel = CalcTorqueAccel(AngularDamp, TestDeltaTime);
+			UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular velocity 1: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *TestAngularVelocity.ToString());
+			AngularDampToVelocityRatio = AngularDampAccel.Size() / TestAngularVelocity.Size();
+
+			TestAngularVelocity += AngularDampAccel;
+
+			UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp accel: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *AngularDampAccel.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular velocity 2: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *TestAngularVelocity.ToString());
+		}
+		
+		float AngularDampToVelocityRatioDifference = AngularDampToVelocityRatio - OldAngularDampToVelocityRatio;
+		float AngularDampToVelocityRatioRatioRatio = AngularDampToVelocityRatioRatio / OldAngularDampToVelocityRatioRatio;
+		OldAngularDampToVelocityRatioRatio = AngularDampToVelocityRatioRatio;
+		OldAngularDampToVelocityRatio = AngularDampToVelocityRatio;
+
+		float AngularDampToVelocityRatioDiffDiff = AngularDampToVelocityRatioDifference - OldAngularDampToVelocityRatioDifference;
+		OldAngularDampToVelocityRatioDifference = AngularDampToVelocityRatioDifference;
+
+		float AngularDampToVelocityRatioDiffDiffDiff = AngularDampToVelocityRatioDiffDiff - OldAngularDampToVelocityRatioDiffDiff;
+		OldAngularDampToVelocityRatioDiffDiff = AngularDampToVelocityRatioDiffDiff;
+
+		UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatio));
+		UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioRatio));
+		UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] AD to the power of DT: [%s]"), *FString::SanitizeFloat(TestDeltaTime), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(FMath::Pow(TestAngularDampScale, TestDeltaTime)));
+
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio difference: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioDifference));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio diff diff: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioDiffDiff));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio diff diff diff: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioDiffDiffDiff));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioRatio));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio ratio ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioRatioRatio));
+	}
+
 	ExitGlide();
 }
 void UBalingaMovement::LandReleased() {}
+
+/*
+void UBalingaMovement::TestTorqueAtDifferentDT(CalcForceOrTorqueDef CalcTorque, CalcForceOrTorqueDef CalcOtherTorque, float StartDeltaTime, float DeltaDeltaTime, int IterationAmount)
+{
+	float OldAngularDampToVelocityRatio = 0;
+	float OldAngularDampToVelocityRatioRatio = 0;
+	float OldAngularDampToVelocityRatioDifference = 0;
+	float OldAngularDampToVelocityRatioDiffDiff = 0;
+
+	for (int i = 0; i <= 210; i += 7)
+	{
+		int TestDeltaTimeDivisor = (30 + i);
+		float TestDeltaTime = 1 / float(TestDeltaTimeDivisor);
+		FVector TestWingRoll = FVector(5000, 0, 0);
+
+		float AngularDampToVelocityRatio = 0;
+		FVector TestAngularVelocity = FVector::ZeroVector;
+		float TestAngularDampScale = 0.3;
+
+		for (float j = 0; j < 10; j++)
+		{
+			TestAngularVelocity += CalcTorqueAccel(CalcOtherTorque(), TestDeltaTime);
+			FVector AngularDamp = CalcAngularDamp(TestAngularVelocity, TestAngularDampScale, TestDeltaTime);
+			TestAngularVelocity += CalcTorqueAccel(AngularDamp, TestDeltaTime);
+			AngularDampToVelocityRatio = CalcTorqueAccel(AngularDamp, TestDeltaTime).Size() / TestAngularVelocity.Size();
+			UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular velocity: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *TestAngularVelocity.ToString());
+		}
+
+		float AngularDampToVelocityRatioDifference = AngularDampToVelocityRatio - OldAngularDampToVelocityRatio;
+		float AngularDampToVelocityRatioRatio = AngularDampToVelocityRatio / OldAngularDampToVelocityRatio;
+		float AngularDampToVelocityRatioRatioRatio = AngularDampToVelocityRatioRatio / OldAngularDampToVelocityRatioRatio;
+		OldAngularDampToVelocityRatioRatio = AngularDampToVelocityRatioRatio;
+		OldAngularDampToVelocityRatio = AngularDampToVelocityRatio;
+
+		float AngularDampToVelocityRatioDiffDiff = AngularDampToVelocityRatioDifference - OldAngularDampToVelocityRatioDifference;
+		OldAngularDampToVelocityRatioDifference = AngularDampToVelocityRatioDifference;
+
+		float AngularDampToVelocityRatioDiffDiffDiff = AngularDampToVelocityRatioDiffDiff - OldAngularDampToVelocityRatioDiffDiff;
+		OldAngularDampToVelocityRatioDiffDiff = AngularDampToVelocityRatioDiffDiff;
+
+		UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatio));
+		UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioRatio));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio difference: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioDifference));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio diff diff: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioDiffDiff));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio diff diff diff: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioDiffDiffDiff));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioRatio));
+		//UE_LOG(LogTemp, Warning, TEXT("DT [%s], AD [%s] Angular damp to velocity ratio ratio ratio: [%s]"), *FString::FromInt(TestDeltaTimeDivisor), *FString::SanitizeFloat(TestAngularDampScale), *FString::SanitizeFloat(AngularDampToVelocityRatioRatioRatio));	
+	}
+}
+*/
 
 void UBalingaMovement::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
 {

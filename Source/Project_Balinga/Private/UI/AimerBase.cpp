@@ -27,7 +27,7 @@ void UAimerBase::FollowMouse()
 
 		FVector2D AimerPosition = AimerSlot->GetPosition();
 
-		FVector2D DesiredNextPosition = AimerPosition + Velocity;
+		FVector2D DesiredNextPosition = Velocity;
 
 		FVector2D NextPosition = (DesiredNextPosition.Size() > BorderRadius) ? DesiredNextPosition.GetSafeNormal() * BorderRadius : DesiredNextPosition;
 
