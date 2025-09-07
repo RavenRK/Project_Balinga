@@ -21,10 +21,8 @@ void UIdle_Balinga::OnTickState()
 {
     if (BalingaRef)
     {
-        float Speed = BalingaRef->GetVelocity().Size();
-
         // If the character starts moving -> switch to Move state
-        if (Speed > 1)
+        if (BalingaRef->GetVelocity().Size() > 1.f)
         {
             if (UBalingaStatemachine* SM = BalingaRef->FindComponentByClass<UBalingaStatemachine>())
             {

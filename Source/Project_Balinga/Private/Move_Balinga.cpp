@@ -20,7 +20,6 @@ void UMove_Balinga::OnTickState()
 {
 	if (BalingaRef)
 	{
-
 		// Auto return to Idle if no velocity
 		if (BalingaRef->GetVelocity().Size() < 1.f)
 		{

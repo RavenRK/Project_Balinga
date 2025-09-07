@@ -50,46 +50,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Help")
 	float bDoesThisWork = true;
 
-
-	//Ground parameters
-	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
-	float BaseGravityScale = 9.8f;
-	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
-	float JumpGravityScale = 3.9f;
-	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
-	float JumpVelocity = 1200;
-	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|")
-	float MoveSpeed = 750;
-
-	FTimerHandle AttackCooldownTimer;
-
-protected:
-	virtual void BeginPlay() override;
-
-public:	
-	virtual void Tick(float DeltaTime) override;
-	virtual void CheckJumpInput(float DeltaTime) override;
-
-	//to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-	void StartJump();
-	void EndJump();
-	void Land();
-
-	int camMode = 0;
-
-	#pragma region AttackFunctions
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-	float AttackCooldown = 1.0f;
-
-	bool bCanAttack = true;
-
-	void TryAttack();
-	void AttackCD();	//CD = Cooldown
-
-
 	UFUNCTION()
 	void OnAttackOverlap
 	(
@@ -101,11 +61,22 @@ public:
 		const FHitResult& SweepResult
 	);
 
+protected:
+	virtual void BeginPlay() override;
+
+public:	
+	virtual void Tick(float DeltaTime) override;
+	
+	virtual void CheckJumpInput(float DeltaTime) override;
+	void PickUpItem(ABaseItem* Item);
+
+	//to bind functionality to input
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	int camMode = 0;
+
 	UPROPERTY()
 	ABaseItem* HeldItem = nullptr;
-
-	void DropItem();
-	void PickUpItem(ABaseItem* Item);
 
 #pragma endregion
 

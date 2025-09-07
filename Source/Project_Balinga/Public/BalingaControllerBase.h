@@ -50,6 +50,7 @@ public:
 
 	FVector2D GetAimerPosition();
 
+
 protected:
 	virtual void OnPossess(APawn* aPawn) override;
 	virtual void OnUnPossess() override;
@@ -64,6 +65,26 @@ protected:
 
 	void Attack(const FInputActionValue& InputActionValue);
 	void DropItem(const FInputActionValue& InputActionValue);
+
+	void TryAttack();
+	void AttackCD();
+	bool bCanAttack = true;
+
+	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
+	float BaseGravityScale = 9.8f;
+	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
+	float JumpGravityScale = 3.9f;
+	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
+	float JumpVelocity = 1200;
+	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|")
+	float MoveSpeed = 750;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float AttackCooldown = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Balinga Movement")
+	class UBalingaMovement* BalingaMovement;
+
+	FTimerHandle AttackCooldownTimer;
 
 
 private:
