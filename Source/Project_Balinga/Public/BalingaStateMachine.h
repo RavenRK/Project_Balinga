@@ -11,12 +11,12 @@
 class UBaseState;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class PROJECT_BALINGA_API UBalingaStatemachine : public UActorComponent
+class PROJECT_BALINGA_API UBalingaStateMachine : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:	
-	UBalingaStatemachine();
+	UBalingaStateMachine();
 
 protected:
 	virtual void BeginPlay() override;

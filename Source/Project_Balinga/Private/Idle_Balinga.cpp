@@ -24,7 +24,7 @@ void UIdle_Balinga::OnTickState()
         // If the character starts moving -> switch to Move state
         if (BalingaRef->GetVelocity().Size() > 1.f)
         {
-            if (UBalingaStatemachine* SM = BalingaRef->FindComponentByClass<UBalingaStatemachine>())
+            if (UBalingaStateMachine* SM = BalingaRef->FindComponentByClass<UBalingaStateMachine>())
             {
                 SM->SwitchStateByKey("Move");
             }

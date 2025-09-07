@@ -22,7 +22,7 @@ ABalingaBase::ABalingaBase(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 
 	//State Machine
-	StateMachine = CreateDefaultSubobject<UBalingaStatemachine>(TEXT("State Machine"));
+	StateMachine = CreateDefaultSubobject<UBalingaStateMachine>(TEXT("State Machine"));
 	StateMachine->InitStateMachine();
 
 	//Custom Movement Component

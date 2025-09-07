@@ -9,20 +9,20 @@
 
 
 
-UBalingaStatemachine::UBalingaStatemachine()
+UBalingaStateMachine::UBalingaStateMachine()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	InitialState = "Idle";
 }
 
-void UBalingaStatemachine::BeginPlay()
+void UBalingaStateMachine::BeginPlay()
 {
 	Super::BeginPlay();
 	InitState();
 	InitStateMachine();
 }
 
-void UBalingaStatemachine::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UBalingaStateMachine::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -43,7 +43,7 @@ void UBalingaStatemachine::TickComponent(float DeltaTime, ELevelTick TickType, F
 	}
 }
 
-void UBalingaStatemachine::SwitchStateByKey(FName KeyState)
+void UBalingaStateMachine::SwitchStateByKey(FName KeyState)
 {
 	UBaseState* NewState = StateMap.FindRef(KeyState);
 
@@ -95,7 +95,7 @@ void UBalingaStatemachine::SwitchStateByKey(FName KeyState)
 		}
 	}
 }
-void UBalingaStatemachine::SwitchState(UBaseState* NewState)
+void UBalingaStateMachine::SwitchState(UBaseState* NewState)
 {
 	if (!IsValid(NewState))
 	{
@@ -124,12 +124,12 @@ void UBalingaStatemachine::SwitchState(UBaseState* NewState)
 	bCanTickState = true;
 }
 
-void UBalingaStatemachine::InitStateMachine()
+void UBalingaStateMachine::InitStateMachine()
 {
 	//SwitchStateByKey(InitialState);
 }
 
-void UBalingaStatemachine::InitState()
+void UBalingaStateMachine::InitState()
 {
 	for (auto It = AvailableStates.CreateConstIterator(); It; ++It)
 	{

@@ -6,10 +6,10 @@
 #include "GameFramework/Character.h"
 #include "BalingaBase.generated.h"
 
-class CameraController;
+class UBalingaMovement;
 class ABaseItem;
 class SphereComponent;
-class UBalingaStatemachine;
+class UBalingaStateMachine;
 
 UCLASS()
 class ABalingaBase : public ACharacter
@@ -21,7 +21,7 @@ public:
 	ABalingaBase(const FObjectInitializer& ObjectInitializer);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Balinga Movement")
-	class UBalingaMovement* BalingaMovement;
+	UBalingaMovement* BalingaMovement;
 	UPROPERTY()
 	TObjectPtr<USceneComponent> LeftLiftArrow;
 	UPROPERTY()
@@ -41,13 +41,11 @@ public:
 	class USphereComponent* AttackSphere;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Balinga State Machine")
-	UBalingaStatemachine* StateMachine;
+	UBalingaStateMachine* StateMachine;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	class UBalingaCamera* BalingaCamera;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class ABalingaStateMachine* StateMachine;
 
 	//Ground parameters
 	UPROPERTY(EditAnywhere, Category = "Balinga Movement|Ground|Jump")
@@ -98,20 +96,8 @@ public:
 		bool bFromSweep,
 		const FHitResult& SweepResult
 	);
-
-protected:
-	virtual void BeginPlay() override;
-
-public:	
-	virtual void Tick(float DeltaTime) override;
 	
-	virtual void CheckJumpInput(float DeltaTime) override;
 	void PickUpItem(ABaseItem* Item);
-
-	//to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-	int camMode = 0;
 
 	UPROPERTY()
 	ABaseItem* HeldItem = nullptr;

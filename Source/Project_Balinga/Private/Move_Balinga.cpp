@@ -23,7 +23,7 @@ void UMove_Balinga::OnTickState()
 		// Auto return to Idle if no velocity
 		if (BalingaRef->GetVelocity().Size() < 1.f)
 		{
-			if (UBalingaStatemachine* SM = BalingaRef->FindComponentByClass<UBalingaStatemachine>())
+			if (UBalingaStateMachine* SM = BalingaRef->FindComponentByClass<UBalingaStateMachine>())
 			{
 				SM->SwitchStateByKey("Idle");
 			}

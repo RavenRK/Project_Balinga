@@ -68,7 +68,7 @@ void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue
 {
 	Balinga->Jump();
 
-	if (!BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
+	if (!Cast<ABalingaBase>(GetOwner())->BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
 	{
 		Balinga->GetCharacterMovement()->GravityScale = JumpGravityScale;
 	}
