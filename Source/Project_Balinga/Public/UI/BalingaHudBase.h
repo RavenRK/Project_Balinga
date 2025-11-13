@@ -31,6 +31,7 @@ class ABalingaHudBase : public AHUD
 public:
 	void SetViewMode(int viewMode);
 	FVector2D GetAimerPosition();
+	FVector2D GetAimerPercentPosition();
 
 private:
 	GENERATED_BODY()

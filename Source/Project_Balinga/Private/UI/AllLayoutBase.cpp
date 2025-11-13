@@ -20,6 +20,11 @@ FVector2D UAllLayoutBase::GetAimerPosition()
 	return Aimer->GetSlotPosition();
 }
 
+FVector2D UAllLayoutBase::GetAimerPercentPosition()
+{
+	return Aimer->GetSlotPercentPosition();
+}
+
 void UAllLayoutBase::SetAimers()
 {
 	AimerBorderRadius->SetAimer(Aimer);

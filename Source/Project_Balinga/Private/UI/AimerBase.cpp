@@ -9,10 +9,10 @@
 
 void UAimerBase::UpdateWidget()
 {
-	FollowMouse();
+	FollowMouseVelocity();
 }
 
-void UAimerBase::FollowMouse()
+void UAimerBase::FollowMouseVelocity()
 {
 	if (Slot && GetOwningPlayer())
 	{
@@ -47,10 +47,15 @@ void UAimerBase::SetScreenScale(float NewScreenScale)
 
 FVector2D UAimerBase::GetSlotPosition()
 {
-	checkf(Slot, TEXT("Slot undefined."));
+	checkf(Slot, TEXT("Aimer canvas slot undefined."));
 
 	TObjectPtr<UCanvasPanelSlot> AimerSlot = Cast<UCanvasPanelSlot>(Slot);
 
 	return AimerSlot->GetPosition();
+}
+
+FVector2D UAimerBase::GetSlotPercentPosition()
+{
+	return GetSlotPosition() / BorderRadius;
 }
 

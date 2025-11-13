@@ -135,6 +135,15 @@ void ABalingaControllerBase::AttackCD()
 
 #pragma endregion //attack and stuff
 
+FVector2D ABalingaControllerBase::GetAimerPercentPosition()
+{
+	if (MyHUD)
+	{
+		return Cast<ABalingaHudBase>(MyHUD)->GetAimerPercentPosition();
+	}
+
+	return FVector2D::ZeroVector;
+}
 FVector2D ABalingaControllerBase::GetAimerPosition()
 {
 	if (MyHUD)

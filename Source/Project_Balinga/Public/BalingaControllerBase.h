@@ -49,6 +49,7 @@ public:
 	TObjectPtr<UInputAction> CamAction{ nullptr };
 
 	FVector2D GetAimerPosition();
+	FVector2D GetAimerPercentPosition();
 
 
 protected:

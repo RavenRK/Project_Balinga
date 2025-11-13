@@ -31,6 +31,7 @@ public:
 	void BeginPlay();
 	void UpdateAimer();
 	FVector2D GetAimerPosition();
+	FVector2D GetAimerPercentPosition();
 
 private:
 	void SetAimers();

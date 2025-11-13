@@ -19,6 +19,7 @@ public:
 	void SetScreenScale(float NewScreenScale);
 
 	FVector2D GetSlotPosition();
+	FVector2D GetSlotPercentPosition();
 
 private:
 	GENERATED_BODY()
@@ -26,7 +27,7 @@ private:
 	float BorderRadius;
 	float ScreenScale;
 
-	void FollowMouse();
+	void FollowMouseVelocity();
 
 protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))

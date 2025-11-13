@@ -19,14 +19,25 @@ void ABalingaHudBase::BeginPlay()
 
 FVector2D ABalingaHudBase::GetAimerPosition()
 {
-	float test = 2.0f;
-
 	if (AllLayoutWidget != nullptr)
 	{
 		AllLayoutWidget->UpdateAimer();
 		return AllLayoutWidget->GetAimerPosition();
 	}
 	else 
+	{
+		return FVector2D::ZeroVector;
+	}
+}
+
+FVector2D ABalingaHudBase::GetAimerPercentPosition()
+{
+	if (AllLayoutWidget != nullptr)
+	{
+		AllLayoutWidget->UpdateAimer();
+		return AllLayoutWidget->GetAimerPercentPosition();
+	}
+	else
 	{
 		return FVector2D::ZeroVector;
 	}
