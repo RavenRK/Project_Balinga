@@ -473,7 +473,7 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcLifts(float LeftOrRightLiftSca
 	Lift *= LiftCoefficient;
 
 	FVector LiftAccel = CalcForceAccel(Lift, Mass, DeltaTime);
-
+	/*
 	if (Lift.Size() != 0) // Prevents NaN from zero divisor
 	{
 		// Check if the next Aoa sign is different to this one, if so overshoot the Aoa less or not at all
@@ -489,7 +489,7 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcLifts(float LeftOrRightLiftSca
 			LiftAccel *= LiftCoefficient;
 		}
 	}
-
+	*/
 	// Distribute lift to allow for torque
 
 	Lift = CalcAccelForce(LiftAccel, Mass, DeltaTime);
@@ -631,11 +631,13 @@ FVector UBalingaMovement::FGlideArgs::CalcDragTorque(FVector Drag, FVector LiftR
 	FVector DesiredForward = InputQuat.RotateVector(ActorForward);
 
 	FQuat DesiredQuat = FQuat::FindBetweenVectors(DesiredForward, FlowVelocity);
-	FVector DesiredRot = DesiredQuat.ToRotationVector();
+	// FVector DesiredRot = DesiredQuat.ToRotationVector();
+	FVector DesiredRot = CalcTorqueAccel((LiftRoll + LiftPitch), MomentInertia, DeltaTime);
 	FVector DesiredRotAxis = DesiredRot.GetSafeNormal();
 
 	float DesiredRotScale = DragTorqueAxis.Dot(DesiredRotAxis);
 	DesiredRotScale = (FMath::Sign(DesiredRotScale) == -1) ? 0 : DesiredRotScale;
+	DesiredRotScale = (FMath::Sign(DesiredRot.Size() < 0.001)) ? 1 : DesiredRotScale;
 
 	DragTorque *= DesiredRotScale;
 
