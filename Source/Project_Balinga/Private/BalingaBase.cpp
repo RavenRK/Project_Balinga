@@ -64,13 +64,12 @@ void ABalingaBase::BeginPlay()
 	BalingaMovement->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	AttackSphere->OnComponentBeginOverlap.AddDynamic(this, &ABalingaBase::OnAttackOverlap);
-
 }
 
 void ABalingaBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
 	float Speed = GetVelocity().Size();
 	BalingaCamera->CameraControllerCheck(Camera, SpringArm, DeltaTime, camMode, Speed);
 
@@ -78,17 +77,17 @@ void ABalingaBase::Tick(float DeltaTime)
 	float Pitch = BalingaRotation.Pitch;
 	if (Pitch > 5)
 	{
-		GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Red, TEXT("Flying"));
+		// GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Red, TEXT("Flying"));
 		camMode = 1; // Set camMode to 1 for flying
 	}
 	else if (Pitch < -30.0f)
 	{
-		GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Green, TEXT("Diving"));
+		// GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Green, TEXT("Diving"));
 		camMode = 2; // Set camMode to 2 for diving
 	}
 	else if (Pitch < -5.0f && Pitch > -30.0f)
 	{
-		GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Green, TEXT("Gliding"));
+		// GEngine->AddOnScreenDebugMessage(1, 1.5f, FColor::Green, TEXT("Gliding"));
 		camMode = 2; // Set camMode to 2 for diving
 	}
 }
@@ -119,20 +118,22 @@ void ABalingaBase::CheckJumpInput(float DeltaTime)
 				
 				//JumpCurrentCount++;
 			}
-			
-			const bool bDidJump = CanJump() && BalingaMovement->DoJump(bClientUpdating);
-			if (bDidJump)
+			else
 			{
-				// Transition from not (actively) jumping to jumping.
-				if (!bWasJumping)
+				const bool bDidJump = CanJump() && BalingaMovement->DoJump(bClientUpdating);
+				if (bDidJump)
 				{
-					JumpCurrentCount++;
-					JumpForceTimeRemaining = GetJumpMaxHoldTime();
-					OnJumped();
+					// Transition from not (actively) jumping to jumping.
+					if (!bWasJumping)
+					{
+						JumpCurrentCount++;
+						JumpForceTimeRemaining = GetJumpMaxHoldTime();
+						OnJumped();
+					}
 				}
-			}
 
-			bWasJumping = bDidJump;
+				bWasJumping = bDidJump;
+			}
 		}
 	}
 }

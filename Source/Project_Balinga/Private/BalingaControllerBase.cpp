@@ -44,7 +44,8 @@ void ABalingaControllerBase::OnPossess(APawn* aPawn)
 	}
 	else   {checkf(false, TEXT("One or more input actions were not specified."));}
 
-	//Qjg0LTg3MbShowMouseCursor = true;
+	Balinga->GetCharacterMovement()->JumpZVelocity = JumpVelocity;
+	Balinga->BalingaMovement->EnterGlide();
 }
 
 #pragma region Movement
@@ -66,23 +67,32 @@ void ABalingaControllerBase::Move(const FInputActionValue& InputActionValue)
 }
 void ABalingaControllerBase::StartJump(const FInputActionValue& InputActionValue)
 {
-	Balinga->Jump();
-
 	if (!Balinga->BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
 	{
 		Balinga->GetCharacterMovement()->GravityScale = JumpGravityScale;
 	}
+	else
+	{
+		Balinga->BalingaMovement->bWantsToFlap = true;
+	}
+
+	Balinga->Jump();	
 }
 void ABalingaControllerBase::EndJump(const FInputActionValue& InputActionValue)
 {
-	Balinga->GetCharacterMovement()->GravityScale = BaseGravityScale;
+ 	Balinga->GetCharacterMovement()->GravityScale = BaseGravityScale;
+
+	if (Balinga->BalingaMovement->IsCustomMovementMode(CMOVE_Glide))
+	{
+		Balinga->BalingaMovement->bWantsToFlap = false;
+	}
 }
 
 void ABalingaControllerBase::Land(const FInputActionValue& InputActionValue) 
 {
 	Balinga->BalingaMovement->LandPressed();
 }
-#pragma endregion // look, move, jump, land
+#pragma endregion 
 
 #pragma region Abilities
 void ABalingaControllerBase::Attack(const FInputActionValue& InputActionValue) 
@@ -133,7 +143,7 @@ void ABalingaControllerBase::AttackCD()
 	bCanAttack = true;
 }
 
-#pragma endregion //attack and stuff
+#pragma endregion //attack and stuffF
 
 FVector2D ABalingaControllerBase::GetAimerPercentPosition()
 {

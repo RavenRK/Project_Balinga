@@ -39,44 +39,60 @@ public:
 	void ExitGlide();
 
 	void FlapPressed();
+	void FlapReleased();
 
 	void LandPressed();
 	void LandReleased();
+
+	bool bWantsToFlap;
 
 private:
 	GENERATED_BODY()
 
 	bool bWantsToLand;
-	
+	// Minimum fraction of a second passed to perform a substep
 	UPROPERTY(EditDefaultsOnly, Category = "General") float FixedDeltaTimeDivisor;
-	UPROPERTY(EditDefaultsOnly, Category = "General") bool bShouldAverageForcesAndTorques; // Eventually specify to glide (probs when i start flapping)
+	UPROPERTY(EditDefaultsOnly, Category = "General") bool bShouldAverageForcesAndTorques;
+	// How many frames averaging simulates (probably only use up to 1)
 	UPROPERTY(EditDefaultsOnly, Category = "General") float PredictionScale;
-	float AccumulatedDeltaTime;
-	float FixedDeltaTime;
+	// Fraction of velocity added to position
+	UPROPERTY(EditDefaultsOnly, Category = "General") float VelocityScale;
+	// Fraction of angular velocity added to orientation
+	UPROPERTY(EditDefaultsOnly, Category = "General") float AngularVelocityScale;
+	float AccumulatedDeltaTime; // Amount of delta time passed to substep through
+	float FixedDeltaTime; // Minimum amount of milliseconds passed to perform a substep
+	FVector TrueVelocity;
+	float TrueVelToVelMagRatio;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") TArray<bool> bWhichGlideForcesAndTorquesEnabled;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") bool bShouldLimitGlideSpeed;
+	// Speed to linearly limit to whilst gliding (complicated by velocity scale)
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") float MaxGlideSpeed;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Thrust") float DefaultThrustScale;	
 	float ThrustScale;
 	FVector ThrustThisFrame;
-
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Gravity") float GlideGravityScale;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Lift") float DefaultLiftScale;
+	// Delete when bothered (might reimplement, but still delete)
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Lift") float DefaultMaxLiftDesiredScale;
+	// Optimal angle of attack for lift, after which lift coefficient decreases
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Lift") float CriticalAoa;
 	float LiftScale;
 	float MaxLiftDesiredScale;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Drag") float DefaultDragScale;
+	// Delete when bothered (might reimplement, but still delete)
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Drag") float DefaultMaxDragDesiredScale;
+	// Minimum percentage of drag equation always applied, unless drag scale 0
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Drag") float ParasiticDrag;
+	// Gives us the drag-AoA curve we want, should make more similar to critical AoA
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Drag") float DragCoefficientAoaScale;
 	float DragScale;
 	float MaxDragDesiredScale;
 
+	// Will eventually matter and be a 3D vector, or 3x3 matrix
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MomentInertia;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") bool bShouldSnapRotation;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") bool bShouldUseVectorRotation;
@@ -84,13 +100,20 @@ private:
 
 	// Categorise deeper when more params
 
+	// The minimum lift accel that we'll input into the roll calculation. Increases the amount of roll (greater left-right lifts, greater difference, greater torque)
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MinRollForceAccel;
+	// May implement later, more of a finishing touch
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float BonusLiftRollScale;
-
+	// The minimum lift accel that we'll input into the roll calculation. Increases the amount of roll (greater forward-back lifts, greater difference, greater torque)
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MinPitchForceAccel;
+	// May implement later, more of a finishing touch
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float BonusLiftPitchScale;
+	// Aligns actor forward with velocity
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignForwardScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignRightScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignUpScale;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float DragTorqueScale;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float DefaultAngularDampScale;
 	float AngularDampScale;
@@ -101,7 +124,6 @@ private:
 	float SurfaceArea;
 	FVector WindVelocity;
 	float AirDensity;
-
 
 	UPROPERTY() TObjectPtr<ABalingaBase> BalingaOwner; // Used to access Balinga things outside CharacterOwner
 
@@ -116,16 +138,16 @@ private:
 	void AddForceAtPos(FVector Force, FVector Position, float DeltaTime);
 
 	void AddForceToVel(FVector Force, float DeltaTime);
-	FVector CalcAccelForce(FVector GivenAcceleration, float DeltaTime);
+	FVector CalcAccelForce(FVector GivenAcceleration, float DeltaTime) const;
 	static FVector CalcAccelForce(FVector GivenAcceleration, float GivenMass, float DeltaTime);
-	FVector CalcForceAccel(FVector Force, float DeltaTime);
+	FVector CalcForceAccel(FVector Force, float DeltaTime) const;
 	static FVector CalcForceAccel(FVector Force, float GivenMass, float DeltaTime);
 
 	static FVector CalcTorqueFromForceAtPos(FVector Force, FVector Position);
 	void AddTorqueToAngularVel(FVector Torque, float DeltaTime);
-	FVector CalcAccelTorque(FVector GivenAcceleration, float DeltaTime);
+	FVector CalcAccelTorque(FVector GivenAcceleration, float DeltaTime) const;
 	static FVector CalcAccelTorque(FVector GivenAcceleration, float GivenMomentInertia, float DeltaTime);
-	FVector CalcTorqueAccel(FVector Torque, float DeltaTime);
+	FVector CalcTorqueAccel(FVector Torque, float DeltaTime) const;
 	static FVector CalcTorqueAccel(FVector Torque, float GivenMomentInertia, float DeltaTime);
 
 	static FVector CombineRotationVectors(TArray<FVector> Vectors);
@@ -169,7 +191,7 @@ private:
 	{
 		TORQUES_LiftRoll,
 		TORQUES_LiftPitch,
-		TORQUES_DragTorque,
+		TORQUES_AutoAlign,
 		TORQUES_AngularDamp,
 		TORQUES_MAX
 	};
@@ -214,14 +236,25 @@ private:
 		float MinPitchForceAccel;
 		float BonusLiftPitchScale;
 
-		float DragTorqueScale;
+		float AutoAlignScale;
+		float AutoAlignForwardScale;
+		float AutoAlignRightScale;
+		float AutoAlignUpScale;
+
 
 		float AngularDampScale;
 
 
 	public:
-		FVector debugDragTorqueAxis;
-		FVector debugDesiredRotAxis;
+		mutable float DebugDragCoefficient;
+		mutable FVector DebugAutoAlignAxis;
+		mutable FVector DebugDesiredRotAxis;
+
+		mutable float DebugLiftCoefficient;
+
+		mutable FVector DebugTrueLiftRoll;
+		mutable FVector DebugTrueLiftPitch;
+
 
 		FGlideArgs
 		(
@@ -237,7 +270,7 @@ private:
 			FVector GivenGravityDirection, float GivenGravityScale,
 			float GivenMinRollForceAccel, float GivenBonusLiftRollScale,
 			float GivenMinPitchForceAccel, float GivenBonusLiftPitchScale,
-			float GivenDragTorqueScale,
+			float GivenAutoAlignScale, float GivenAutoAlignForwadScale, float GivenAutoAlignRightScale, float GivenAutoAlignUpScale,
 			float GivenAngularDampScale
 		)
 		{
@@ -279,7 +312,10 @@ private:
 			MinPitchForceAccel = GivenMinPitchForceAccel;
 			BonusLiftPitchScale = GivenBonusLiftPitchScale;
 
-			DragTorqueScale = GivenDragTorqueScale;
+			AutoAlignScale = GivenAutoAlignScale;
+			AutoAlignForwardScale = GivenAutoAlignForwadScale;
+			AutoAlignRightScale = GivenAutoAlignRightScale;
+			AutoAlignUpScale = GivenAutoAlignUpScale;
 
 			AngularDampScale = GivenAngularDampScale;
 		}
@@ -327,29 +363,34 @@ private:
 			MinPitchForceAccel = GlideArgs->MinPitchForceAccel;
 			BonusLiftPitchScale = GlideArgs->BonusLiftPitchScale;
 
+			AutoAlignScale = GlideArgs->AutoAlignScale;
+			AutoAlignScale = GlideArgs->AutoAlignForwardScale;
+			AutoAlignScale = GlideArgs->AutoAlignRightScale;
+			AutoAlignScale = GlideArgs->AutoAlignUpScale;
+
 			AngularDampScale = GlideArgs->AngularDampScale;
 		}
 
 		TTuple<TArray<FVector>, TArray<FVector>, FVector, FVector> CalcAverageGlideForcesAndTorques
 		(
 			TArray<FVector> Forces, TArray<FVector> Torques, FVector Force, FVector Torque, float PredictionScale
-		);
+		) const;
 		
-		TArray<FVector> CalcGlideForcesAndTorques();
+		TArray<FVector> CalcGlideForcesAndTorques() const;
 
 	private:
-		FVector CalcLift(float LeftOrRightLiftScale, FVector FlowVelocity);
-		TArray<FVector> CalcLifts(float LeftOrRightLiftScale, FVector FlowVelocity);
+		FVector CalcLift(float LeftOrRightLiftScale, FVector FlowVelocity) const;
+		TArray<FVector> CalcLifts(float LeftOrRightLiftScale, FVector FlowVelocity) const;
 
-		FVector CalcDrag(FVector FlowVelocity);
+		FVector CalcDrag(FVector FlowVelocity) const;
 
-		FVector CalcLiftRoll(float AimerPercentComponent, TArray<FVector> WingLifts, FVector FlowVelocity);
+		FVector CalcLiftRoll(float AimerPercentComponent, TArray<FVector> WingLifts, FVector FlowVelocity) const;
 
-		FVector CalcLiftPitch(float AimerPercentComponent, TArray<FVector> WingLifts, FVector FlowVelocity);
+		FVector CalcLiftPitch(float AimerPercentComponent, TArray<FVector> WingLifts, FVector FlowVelocity) const;
 		
-		FVector CalcDragTorque(FVector Drag, FVector LiftRoll, FVector LiftPitch, FVector FlowVelocity);
+		FVector CalcAutoAlign(FVector Drag, FVector LiftRoll, FVector LiftPitch, FVector FlowVelocity) const;
 
-		FVector CalcAngularDamp();
+		FVector CalcAngularDamp() const;
 	};
 
 	// Holds data used in phys functions that might change and thus need to be saved to accurately replicate moves on the server

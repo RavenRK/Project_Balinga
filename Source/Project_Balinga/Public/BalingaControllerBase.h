@@ -83,7 +83,6 @@ protected:
 	float AttackCooldown = 1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Balinga Movement")
-	class UBalingaMovement* BalingaMovement;
 
 	FTimerHandle AttackCooldownTimer;
 
