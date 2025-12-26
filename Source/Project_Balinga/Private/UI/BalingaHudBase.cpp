@@ -21,7 +21,6 @@ FVector2D ABalingaHudBase::GetAimerPosition()
 {
 	if (AllLayoutWidget != nullptr)
 	{
-		AllLayoutWidget->UpdateAimer();
 		return AllLayoutWidget->GetAimerPosition();
 	}
 	else 
@@ -34,7 +33,6 @@ FVector2D ABalingaHudBase::GetAimerPercentPosition()
 {
 	if (AllLayoutWidget != nullptr)
 	{
-		AllLayoutWidget->UpdateAimer();
 		return AllLayoutWidget->GetAimerPercentPosition();
 	}
 	else
@@ -47,5 +45,5 @@ void ABalingaHudBase::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	AllLayoutWidget->UpdateAimer();
+	AllLayoutWidget->UpdateAimer(DeltaSeconds);
 }

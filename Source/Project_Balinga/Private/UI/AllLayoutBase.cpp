@@ -12,7 +12,6 @@ void UAllLayoutBase::BeginPlay()
 
 	AimerBorderRadius->UpdateWidget();
 	AimerScreenScale->UpdateWidget();
-	Aimer->UpdateWidget();
 }
 
 FVector2D UAllLayoutBase::GetAimerPosition()
@@ -31,9 +30,9 @@ void UAllLayoutBase::SetAimers()
 	AimerScreenScale->SetAimer(Aimer);
 }
 
-void UAllLayoutBase::UpdateAimer()
+void UAllLayoutBase::UpdateAimer(float DeltaSeconds)
 {
-	Aimer->UpdateWidget();
+	Aimer->UpdateWidget(DeltaSeconds);
 }
 
 

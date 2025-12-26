@@ -7,12 +7,13 @@
 #include "Components/CanvasPanelSlot.h"
 #include "BalingaControllerBase.h"
 
-void UAimerBase::UpdateWidget()
+
+void UAimerBase::UpdateWidget(float DeltaSeconds)
 {
-	FollowMouseVelocity();
+	FollowMouseVelocity(DeltaSeconds);
 }
 
-void UAimerBase::FollowMouseVelocity()
+void UAimerBase::FollowMouseVelocity(float DeltaSeconds)
 {
 	if (Slot && GetOwningPlayer())
 	{
@@ -24,6 +25,13 @@ void UAimerBase::FollowMouseVelocity()
 		Velocity /= ScreenScale;
 
 		Velocity.Y *= -1;
+
+		FVector2D Accel = Velocity - LastVelocity;
+
+		FMath::CriticallyDampedSmoothing(Velocity.X, Accel.X, LastVelocity.X, Accel.X * 1, DeltaSeconds * 1000, XSmoothTime);
+		FMath::CriticallyDampedSmoothing(Velocity.Y, Accel.Y, LastVelocity.Y, Accel.Y * 1, DeltaSeconds * 1000, YSmoothTime);
+
+		LastVelocity = Velocity;
 
 		FVector2D AimerPosition = AimerSlot->GetPosition();
 

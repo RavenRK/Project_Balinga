@@ -68,6 +68,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") bool bShouldLimitGlideSpeed;
 	// Speed to linearly limit to whilst gliding (complicated by velocity scale)
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") float MaxGlideSpeed;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") bool bShouldLimitGlideAngularSpeed;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") float MaxGlideAngularSpeed;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") float MaxWingAoaOffset;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Thrust") float DefaultThrustScale;	
 	float ThrustScale;
 	FVector ThrustThisFrame;
@@ -102,18 +106,24 @@ private:
 
 	// The minimum lift accel that we'll input into the roll calculation. Increases the amount of roll (greater left-right lifts, greater difference, greater torque)
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MinRollForceAccel;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MaxRollOppVelocityScale;
+
 	// May implement later, more of a finishing touch
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float BonusLiftRollScale;
 	// The minimum lift accel that we'll input into the roll calculation. Increases the amount of roll (greater forward-back lifts, greater difference, greater torque)
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MinPitchForceAccel;
-	// May implement later, more of a finishing touch
-	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float BonusLiftPitchScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MaxPitchOppVelocityScale;
+	// Minimum lift coefficient to start auto pitching towards lift direction
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float MinAutoPitchCl;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoLiftPitchScale;
 	// Aligns actor forward with velocity
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float VelPitchOffset;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignForwardScale;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignRightScale;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignUpScale;
-
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float AutoAlignActiveInputScale;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float RollStabilityScale;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Rotation") float DefaultAngularDampScale;
 	float AngularDampScale;
@@ -131,8 +141,9 @@ private:
 
 	static FVector CalcDesiredDiffDirection(FVector FlowDirection, FVector ActorForward);
 
-	static float CalcAngleOfAttack(FVector GivenVelocity, FVector GivenWindVelocity, FVector ActorRight, FVector ActorUp);
-	static float CalcAoaSign(FVector GivenVelocity, FVector GivenWindVelocity, FVector ActorRight, FVector ActorUp);
+	static float CalcAngleOfAttack(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorForward, FVector ActorRight, FVector ActorUp);
+	static float CalcAoaSign(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorRight, FVector ActorUp);
+	FVector CalcWingDirection(float AimerPercentComponent, FVector ActorForward, FVector ActorRight);
 
 	// Adds a given force at a given position relative to the actor. 
 	void AddForceAtPos(FVector Force, FVector Position, float DeltaTime);
@@ -192,6 +203,7 @@ private:
 		TORQUES_LiftRoll,
 		TORQUES_LiftPitch,
 		TORQUES_AutoAlign,
+		TORQUES_RollStability,
 		TORQUES_AngularDamp,
 		TORQUES_MAX
 	};
@@ -231,16 +243,22 @@ private:
 		float GravityScale;
 
 		float MinRollForceAccel;
+		float MaxRollOppVelocityScale;
 		float BonusLiftRollScale;
 
 		float MinPitchForceAccel;
-		float BonusLiftPitchScale;
+		float MaxPitchOppVelocityScale;
+		float MinAutoPitchCl;
+		float AutoLiftPitchScale;
 
 		float AutoAlignScale;
+		float VelPitchOffset;
 		float AutoAlignForwardScale;
 		float AutoAlignRightScale;
 		float AutoAlignUpScale;
+		float AutoAlignActiveInputScale;
 
+		float RollStabilityScale;
 
 		float AngularDampScale;
 
@@ -255,6 +273,58 @@ private:
 		mutable FVector DebugTrueLiftRoll;
 		mutable FVector DebugTrueLiftPitch;
 
+		mutable float DebugAutoAlignInputScale;
+		mutable float DebugTrueAutoAlignInputScale;
+		mutable float DebugRollStabilityInputScale;
+		mutable float DebugTrueRollStabilityInputScale;
+
+		FGlideArgs(float DeltaTime, const TArray<bool>& BWhichForcesAndTorquesEnabled, float Mass, float MomentInertia,
+			bool bShouldUseEulerRotation, const FVector& Velocity, const FVector& AngularVelocity,
+			const FVector& WindVelocity, const FVector& ActorForward, const FVector& ActorRight, const FVector& ActorUp,
+			const FVector& Thrust, const FVector2D& AimerPercentPos, float AngleOfAttack, const FVector& WingDirection,
+			float LiftScale, float CriticalAoa, float DragScale, float ParasiticDrag, float DragCoefficientAoaScale,
+			const FVector& GravityDirection, float GravityScale, float MinRollForceAccel, float MaxRollOppVelocityScale,
+			float BonusLiftRollScale, float MinPitchForceAccel, float MaxPitchOppVelocityScale, float MinAutoPitchCl,
+			float AutoLiftPitchScale, float AutoAlignScale, float VelPitchOffset, float AutoAlignForwardScale,
+			float AutoAlignRightScale, float AutoAlignUpScale, float RollStabilityScale, float AngularDampScale)
+			: DeltaTime(DeltaTime),
+			  bWhichForcesAndTorquesEnabled(BWhichForcesAndTorquesEnabled),
+			  Mass(Mass),
+			  MomentInertia(MomentInertia),
+			  bShouldUseEulerRotation(bShouldUseEulerRotation),
+			  Velocity(Velocity),
+			  AngularVelocity(AngularVelocity),
+			  WindVelocity(WindVelocity),
+			  ActorForward(ActorForward),
+			  ActorRight(ActorRight),
+			  ActorUp(ActorUp),
+			  Thrust(Thrust),
+			  AimerPercentPos(AimerPercentPos),
+			  AngleOfAttack(AngleOfAttack),
+			  WingDirection(WingDirection),
+			  LiftScale(LiftScale),
+			  CriticalAoa(CriticalAoa),
+			  DragScale(DragScale),
+			  ParasiticDrag(ParasiticDrag),
+			  DragCoefficientAoaScale(DragCoefficientAoaScale),
+			  GravityDirection(GravityDirection),
+			  GravityScale(GravityScale),
+			  MinRollForceAccel(MinRollForceAccel),
+			  MaxRollOppVelocityScale(MaxRollOppVelocityScale),
+			  BonusLiftRollScale(BonusLiftRollScale),
+			  MinPitchForceAccel(MinPitchForceAccel),
+			  MaxPitchOppVelocityScale(MaxPitchOppVelocityScale),
+			  MinAutoPitchCl(MinAutoPitchCl),
+			  AutoLiftPitchScale(AutoLiftPitchScale),
+			  AutoAlignScale(AutoAlignScale),
+			  VelPitchOffset(VelPitchOffset),
+			  AutoAlignForwardScale(AutoAlignForwardScale),
+			  AutoAlignRightScale(AutoAlignRightScale),
+			  AutoAlignUpScale(AutoAlignUpScale),
+			  RollStabilityScale(RollStabilityScale),
+			  AngularDampScale(AngularDampScale)
+		{
+		}
 
 		FGlideArgs
 		(
@@ -310,7 +380,7 @@ private:
 			BonusLiftRollScale = GivenBonusLiftRollScale;
 
 			MinPitchForceAccel = GivenMinPitchForceAccel;
-			BonusLiftPitchScale = GivenBonusLiftPitchScale;
+			MinAutoPitchCl = GivenBonusLiftPitchScale;
 
 			AutoAlignScale = GivenAutoAlignScale;
 			AutoAlignForwardScale = GivenAutoAlignForwadScale;
@@ -323,7 +393,7 @@ private:
 		FGlideArgs
 		(
 			FGlideArgs* GlideArgs
-		)
+		) 
 		{
 			DeltaTime = GlideArgs->DeltaTime;
 
@@ -361,12 +431,14 @@ private:
 			BonusLiftRollScale = GlideArgs->BonusLiftRollScale;
 
 			MinPitchForceAccel = GlideArgs->MinPitchForceAccel;
-			BonusLiftPitchScale = GlideArgs->BonusLiftPitchScale;
+			MinAutoPitchCl = GlideArgs->MinAutoPitchCl;
 
 			AutoAlignScale = GlideArgs->AutoAlignScale;
-			AutoAlignScale = GlideArgs->AutoAlignForwardScale;
-			AutoAlignScale = GlideArgs->AutoAlignRightScale;
-			AutoAlignScale = GlideArgs->AutoAlignUpScale;
+			AutoAlignForwardScale = GlideArgs->AutoAlignForwardScale;
+			AutoAlignRightScale = GlideArgs->AutoAlignRightScale;
+			AutoAlignUpScale = GlideArgs->AutoAlignUpScale;
+
+			RollStabilityScale = GlideArgs->RollStabilityScale;
 
 			AngularDampScale = GlideArgs->AngularDampScale;
 		}
@@ -389,6 +461,8 @@ private:
 		FVector CalcLiftPitch(float AimerPercentComponent, TArray<FVector> WingLifts, FVector FlowVelocity) const;
 		
 		FVector CalcAutoAlign(FVector Drag, FVector LiftRoll, FVector LiftPitch, FVector FlowVelocity) const;
+
+		FVector CalcRollStability(FVector LiftRoll, FVector LiftPitch) const;
 
 		FVector CalcAngularDamp() const;
 	};

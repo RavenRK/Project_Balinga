@@ -13,7 +13,7 @@ UCLASS(Abstract)
 class UAimerBase : public UAutoUpdateWidget
 {
 public:
-	virtual void UpdateWidget() override;
+	virtual void UpdateWidget(float DeltaSeconds);
 
 	void SetBorderRadius(float NewBorderRadius);
 	void SetScreenScale(float NewScreenScale);
@@ -26,8 +26,12 @@ private:
 
 	float BorderRadius;
 	float ScreenScale;
+	FVector2D LastVelocity;
 
-	void FollowMouseVelocity();
+	UPROPERTY(EditDefaultsOnly) float XSmoothTime;
+	UPROPERTY(EditDefaultsOnly) float YSmoothTime;
+
+	void FollowMouseVelocity(float DeltaSeconds);
 
 protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))

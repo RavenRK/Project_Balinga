@@ -29,7 +29,7 @@ public:
 	TObjectPtr<UAimerScreenScaleBase> AimerScreenScale;
 
 	void BeginPlay();
-	void UpdateAimer();
+	void UpdateAimer(float DeltaSeconds);
 	FVector2D GetAimerPosition();
 	FVector2D GetAimerPercentPosition();
 

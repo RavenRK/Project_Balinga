@@ -21,7 +21,7 @@ void UAimerBorderRadiusBase::SetSlotSize()
 	{
 		TObjectPtr<UCanvasPanelSlot> BorderRadiusSlot = Cast<UCanvasPanelSlot>(Slot);
 		BorderRadiusSlot->SetSize(FVector2D(BorderRadius * 2, BorderRadius * 2));
-	}
+	}	
 }
 
 void UAimerBorderRadiusBase::SyncAimer()

@@ -51,7 +51,6 @@ public:
 	FVector2D GetAimerPosition();
 	FVector2D GetAimerPercentPosition();
 
-
 protected:
 	virtual void OnPossess(APawn* aPawn) override;
 	virtual void OnUnPossess() override;

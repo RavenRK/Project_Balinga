@@ -7,6 +7,7 @@
 #include "BalingaControllerBase.h"
 #include "Developer/NaniteUtilities/Public/Affine.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 void UBalingaMovement::InitializeComponent()
 {
@@ -148,8 +149,11 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 		FVector ActorForward = CharacterOwner->GetActorForwardVector();
 		FVector ActorUp = CharacterOwner->GetActorUpVector();
 
-		FVector WingDirection = (CharacterOwner->GetActorForwardVector()).GetSafeNormal();
-		float AngleOfAttack = CalcAngleOfAttack(Velocity, WingDirection, CharacterOwner->GetActorRightVector(), CharacterOwner->GetActorUpVector());
+		FVector WingDirection = CalcWingDirection(AimerPercentPos.Y, ActorForward, ActorRight);
+		UE_LOG(LogTemp, Warning, TEXT("Wing direction [%s]"), *WingDirection.ToString())
+		UE_LOG(LogTemp, Warning, TEXT("Actor Forward [%s]"), *ActorForward.ToString())
+
+		float AngleOfAttack = CalcAngleOfAttack(Velocity, WingDirection, ActorForward, ActorRight, ActorUp);
 
 		FVector GivenGravityDirection = GetGravityDirection() * -1;
 		float GivenGravityScale = GetGravityZ() * GlideGravityScale;
@@ -166,10 +170,11 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			ThrustThisFrame, AimerPercentPos, AngleOfAttack, WingDirection,
 			LiftScale, CriticalAoa, DragScale, ParasiticDrag, DragCoefficientAoaScale,
 			GivenGravityDirection, GivenGravityScale,
-			MinRollForceAccel, BonusLiftRollScale,
-			MinPitchForceAccel,BonusLiftPitchScale,
-			AutoAlignScale, AutoAlignForwardScale, AutoAlignRightScale, AutoAlignUpScale,
-			AngularDampScale,
+			MinRollForceAccel, MaxRollOppVelocityScale, BonusLiftRollScale,
+			MinPitchForceAccel, MaxPitchOppVelocityScale, MinAutoPitchCl, AutoLiftPitchScale,
+			AutoAlignScale, VelPitchOffset, AutoAlignForwardScale, AutoAlignRightScale, AutoAlignUpScale,
+			RollStabilityScale,
+			AngularDampScale
 		};
 
 		TArray<FVector> CurrentForcesAndTorques = GlideArgs.CalcGlideForcesAndTorques();
@@ -212,32 +217,53 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 		
 		if (bShouldLimitGlideSpeed)
 		{
-			float NewSpeedToSpeedRatio = (NewVelocity.Size() / FMath::Max(1.0f, Velocity.Size()));
+			float NewSpeedToSpeedRatio = (Velocity.Size() != 0)? NewVelocity.Size() / Velocity.Size() : 1;
 			float LimitedSpeedScale = NewSpeedToSpeedRatio;
 
 			LimitedSpeedScale = CalcLimitedSpeedScale(Velocity, NewVelocity, MaxGlideSpeed);
-			NewVelocity = NewVelocity / NewSpeedToSpeedRatio * LimitedSpeedScale;
+
+			if (NewSpeedToSpeedRatio != 0)
+			{
+				NewVelocity = NewVelocity / NewSpeedToSpeedRatio * LimitedSpeedScale;
+			}
 		}
 
 		Velocity = NewVelocity;
 
 		// Apply torque to angular velocity
+		FVector OldAngularVelocity = FVector::ZeroVector;
 
 		if (!bShouldSnapRotation)
 		{
 			// CalcAccel and descale the applied velocity scale
 			FVector AngularAccel = CalcTorqueAccel(Torque, FixedDeltaTime) * (1 / AngularVelocityScale);
+			FVector NewAngularVelocity = AngularVelocity;
+			OldAngularVelocity = NewAngularVelocity;
 			if (bShouldUseVectorRotation)
 			{
-				AngularVelocity += AngularAccel;
+				NewAngularVelocity += AngularAccel;
 			}
 			else 
 			{
-				AngularVelocity = CombineRotationVectors({AngularVelocity, AngularAccel});
+				NewAngularVelocity = CombineRotationVectors({AngularVelocity, AngularAccel});
 			}
+
+			OldAngularVelocity = NewAngularVelocity;
+
+			if (bShouldLimitGlideAngularSpeed)
+			{
+				float NewSpeedToSpeedRatio = (AngularVelocity.Size() != 0)? NewAngularVelocity.Size() / AngularVelocity.Size() : 1;
+				float LimitedSpeedScale = NewSpeedToSpeedRatio;
+
+				LimitedSpeedScale = CalcLimitedSpeedScale(AngularVelocity, NewAngularVelocity, MaxGlideAngularSpeed);
+				if (NewSpeedToSpeedRatio != 0)
+				{
+					NewAngularVelocity = (NewAngularVelocity / NewSpeedToSpeedRatio) * LimitedSpeedScale;
+				}
+			}
+			AngularVelocity = NewAngularVelocity;
+
 		}
-		UE_LOG(LogTemp, Warning, TEXT("Wants to flap [%hs]"), (bWantsToFlap? "true" : "false"));
-		UE_LOG(LogTemp, Warning, TEXT("Thrust this frame[%s]"), *ThrustThisFrame.ToString());
 
 		// Prep for SafeMoveUpdatedComponent()
 
@@ -285,19 +311,20 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), Position, Position + GlideArgs.DebugAutoAlignAxis * 200, CylinderRadius, 15, FColor::Orange, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Orange);
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), Position, Position + GlideArgs.DebugDesiredRotAxis * 200, CylinderRadius, 15, FColor::Purple, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Purple);
 
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftRoll * 10, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Blue);
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftPitch, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftRoll * 10, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Blue);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftPitch, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + AngularVelocity * 100, CylinderRadius, 15, FColor::Green, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + OldAngularVelocity * 100, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
 
 			GEngine->AddOnScreenDebugMessage(1, 100.0f, FColor::Green, FString::Printf(TEXT("Velocity: [%s] [%s]"), *Velocity.ToCompactString(), *FString::SanitizeFloat(Velocity.Size())));
 			GEngine->AddOnScreenDebugMessage(2, 100.0f, FColor::Cyan, FString::Printf(TEXT("Thrust accel: [%s]"), *CalcForceAccel(Forces[FORCES_Thrust], FixedDeltaTime).ToCompactString()));
 			
 			GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Purple, FString::Printf(TEXT("Angle of Attack: [%s]"), *FString::SanitizeFloat(FMath::RadiansToDegrees(AngleOfAttack))));
 			FVector DebugLiftAccel = CalcForceAccel((Forces[EGlideForces::FORCES_LeftWingLift] + Forces[FORCES_RightWingLift]), FixedDeltaTime);
-			GEngine->AddOnScreenDebugMessage(5, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift accel: [%s] [%s]"), *DebugLiftAccel.ToCompactString(), *FString::SanitizeFloat(DebugLiftAccel.Size())));
-			GEngine->AddOnScreenDebugMessage(6, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift coefficient: [%s]"), *FString::SanitizeFloat(GlideArgs.DebugLiftCoefficient)));
+			GEngine->AddOnScreenDebugMessage(5, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift accel: [%s] [%s] Cl: [%s]"), *DebugLiftAccel.ToCompactString(), *FString::SanitizeFloat(DebugLiftAccel.Size()), *FString::SanitizeFloat(GlideArgs.DebugLiftCoefficient)));
 			FVector DebugDragAccel = CalcForceAccel(Forces[FORCES_Drag], FixedDeltaTime);
-			GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("Drag accel: [%s] [%s]"), *DebugDragAccel.ToCompactString(), *FString::SanitizeFloat(DebugDragAccel.Size())));
-			GEngine->AddOnScreenDebugMessage(8, 100.0f, FColor::Red, FString::Printf(TEXT("Drag coefficient: [%s]"), *FString::SanitizeFloat(GlideArgs.DebugDragCoefficient)));
+			GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("Drag accel: [%s] [%s] Cd: [%s]"), *DebugDragAccel.ToCompactString(), *FString::SanitizeFloat(DebugDragAccel.Size()), *FString::SanitizeFloat(GlideArgs.DebugDragCoefficient)));
 
 			//GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Purple, FString::Printf(TEXT("Desired difference: [%s]"), *(FString::SanitizeFloat(DesiredDifference.X) + ", " + FString::SanitizeFloat(DesiredDifference.Y) + ", " + FString::SanitizeFloat(DesiredDifference.Z))));
 			//GEngine->AddOnScreenDebugMessage(13, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift desired scale: [%s]"), *FString::SanitizeFloat(LiftDesiredScale)));
@@ -306,13 +333,21 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			//FDebugDrawer::DrawVlogArrow(CharacterOwner->GetWorld(), "LogTemp", Position, Position + AngularVelocity, CylinderRadius, FColor::Green, "Angular velocity" + AngularVelocity.ToCompactString(), ArrowHeight, ArrowWidth, FColor::Green, "");
 
 			//GEngine->AddOnScreenDebugMessage(6, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift torque projection scale: [%s]"), *FString::SanitizeFloat(LiftTorqueProjectionScale)));
-			GEngine->AddOnScreenDebugMessage(9, 100.0f, FColor::Green, FString::Printf(TEXT("Angular velocity: [%s]"), *AngularVelocity.ToString()));
+			GEngine->AddOnScreenDebugMessage(9, 100.0f, FColor::Emerald, FString::Printf(TEXT("Angular velocity: [%s] [%s]"), *AngularVelocity.ToString(), *FString::SanitizeFloat(AngularVelocity.Size())));
 			// GEngine->AddOnScreenDebugMessage(10, 100.0f, FColor::Green, FString::Printf(TEXT("Angular accel: [%s]"), *CalcTorqueAccel(Torque, FixedDeltaTime).ToString()));
 			// GEngine->AddOnScreenDebugMessage(11, 100.0f, FColor::Silver, FString::Printf(TEXT("Aimer position: [%s]"), *AimerPosition.ToString()));
-			GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Blue, FString::Printf(TEXT("Wing roll: [%s]"), *CalcTorqueAccel(Torques[TORQUES_LiftRoll], FixedDeltaTime).ToString()));
-			GEngine->AddOnScreenDebugMessage(13, 100.0f, FColor::Yellow, FString::Printf(TEXT("Wing pitch: [%s]"), *CalcTorqueAccel(Torques[TORQUES_LiftPitch], FixedDeltaTime).ToString()));
+			FVector LiftRollAccel = CalcTorqueAccel(Torques[TORQUES_LiftRoll], FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Blue, FString::Printf(TEXT("Wing roll: [%s] [%s]"), *LiftRollAccel.ToString(), *FString::SanitizeFloat(LiftRollAccel.Size())));
+			FVector LiftPitchAccel = CalcTorqueAccel(Torques[TORQUES_LiftPitch], FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(13, 100.0f, FColor::Yellow, FString::Printf(TEXT("Wing pitch: [%s] [%s]"), *CalcTorqueAccel(Torques[TORQUES_LiftPitch], FixedDeltaTime).ToString(), *FString::SanitizeFloat(LiftPitchAccel.Size())));
+			FVector AutoAlignAccel = CalcTorqueAccel(Torques[TORQUES_AutoAlign], FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(14, 100.0f, FColor::Magenta, FString::Printf(TEXT("Auto align: [%s] [%s] [%s] [%s]"), *AutoAlignAccel.ToString(), *FString::SanitizeFloat(AutoAlignAccel.Size()), *FString::SanitizeFloat(GlideArgs.DebugTrueAutoAlignInputScale), *FString::SanitizeFloat(GlideArgs.DebugAutoAlignInputScale)));
+			FVector RollStabilityAccel = CalcTorqueAccel(Torques[TORQUES_RollStability], FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(15, 100.0f, FColor::Turquoise, FString::Printf(TEXT("Roll stability: [%s] [%s] [%s] [%s]"), *RollStabilityAccel.ToString(), *FString::SanitizeFloat(RollStabilityAccel.Size()), *FString::SanitizeFloat(GlideArgs.DebugTrueRollStabilityInputScale), *FString::SanitizeFloat(GlideArgs.DebugRollStabilityInputScale)));
+
 			// GEngine->AddOnScreenDebugMessage(14, 100.0f, FColor::Red, FString::Printf(TEXT("Drag torque: [%s]"), *CalcTorqueAccel(Torques[TORQUES_AutoAlign], FixedDeltaTime).ToString()));
-			GEngine->AddOnScreenDebugMessage(16, 100.0f, FColor::Orange, FString::Printf(TEXT("Angular damp: [%s]"), *CalcTorqueAccel(Torques[TORQUES_AngularDamp], FixedDeltaTime).ToString()));
+			FVector AngularDampAccel = CalcTorqueAccel(Torques[TORQUES_AngularDamp], FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(16, 100.0f, FColor::Orange, FString::Printf(TEXT("Angular damp: [%s] [%s]"), *AngularDampAccel.ToString(), *FString::SanitizeFloat(AngularDampAccel.Size())));
 
 			// GEngine->AddOnScreenDebugMessage(17, 100.0f, FColor::Turquoise, FString::Printf(TEXT("True Velocity: [%s] [%s]"), *TrueVelocity.ToCompactString(), *FString::SanitizeFloat(TrueVelocity.Size())));
 			// GEngine->AddOnScreenDebugMessage(18, 100.0f, FColor::Cyan, FString::Printf(TEXT("True Velocity to Velocity Ratio: [%s]"), *FString::SanitizeFloat(TrueVelToVelMagRatio)));
@@ -435,6 +470,11 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcGlideForcesAndTorques() const
 		// Probably do something like desired difference scaling to see if it makes it more helpful
 		ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign] = CalcAutoAlign(ForcesAndTorques[FORCES_Drag], ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], FlowVelocity);
 	}
+
+	if (bWhichForcesAndTorquesEnabled[FORCES_MAX + TORQUES_RollStability])
+	{
+		ForcesAndTorques[FORCES_MAX + TORQUES_RollStability] = CalcRollStability(ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch]);
+	}
 	
 	// Have angular damp take current torques into account
 	FVector AngularVelocityCopy = AngularVelocity;
@@ -443,12 +483,14 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcGlideForcesAndTorques() const
 		AngularVelocityCopy += CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], MomentInertia, DeltaTime);
 		AngularVelocityCopy += CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], MomentInertia, DeltaTime);
 		AngularVelocityCopy += CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign], MomentInertia, DeltaTime);
+		AngularVelocityCopy += CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_RollStability], MomentInertia, DeltaTime);
 	}
 	else
 	{
 		AngularVelocityCopy = CombineRotationVectors({CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], MomentInertia, DeltaTime), AngularVelocityCopy});
 		AngularVelocityCopy = CombineRotationVectors({CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], MomentInertia, DeltaTime), AngularVelocityCopy});
 		AngularVelocityCopy = CombineRotationVectors({ CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign], MomentInertia, DeltaTime), AngularVelocityCopy });
+		AngularVelocityCopy = CombineRotationVectors({ CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_RollStability], MomentInertia, DeltaTime), AngularVelocityCopy });
 	}
 	if (bWhichForcesAndTorquesEnabled[FORCES_MAX + TORQUES_AngularDamp])
 	{
@@ -499,7 +541,7 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcLifts(float LeftOrRightLiftSca
 		if (AssumedAoaSign != FMath::Sign(AngleOfAttack))
 		{
 			LiftAccel = CalcForceAccel(Lift / LiftCoefficient, Mass, DeltaTime);
-
+	
 			FVector AoaDifference = (WingDirection - RightIndependentVelocity.GetSafeNormal());
 			float AoaLiftProjectionScale = (AoaDifference.Dot(LiftAccel) / LiftAccel.Size());
 			LiftCoefficient = FMath::Abs(LiftCoefficient * AoaLiftProjectionScale) * FMath::Sign(AngleOfAttack);
@@ -600,6 +642,12 @@ FVector UBalingaMovement::FGlideArgs::CalcLiftRoll(float AimerPercentComponent, 
 	// FVector FinalLiftYaw = ActorUp * (WingLiftTorques[0] + WingLiftTorques[1]).Size() * LiftYawProjectionScale;
 	FVector FinalLiftTorque = ActorForward * (WingLiftTorques[0] + WingLiftTorques[1]).Size() * LiftTorqueProjectionScale;
 	// FVector FinalLiftTorque = FinalLiftRoll + FinalLiftYaw;
+
+	float RollToOppVelocityDot = FinalLiftTorque.GetSafeNormal().Dot(FlowVelocity.GetSafeNormal() * -1);
+	RollToOppVelocityDot = (RollToOppVelocityDot == -1) ? 0 : RollToOppVelocityDot;
+	float RollOppVelocityScale = FMath::Max(RollToOppVelocityDot * MaxRollOppVelocityScale, 1);
+	FinalLiftTorque *= RollOppVelocityScale;
+
 	return FinalLiftTorque;
 }
 
@@ -629,10 +677,24 @@ FVector UBalingaMovement::FGlideArgs::CalcLiftPitch(float AimerPercentComponent,
 
 	FVector FullPitchForce = PitchForces[0] + PitchForces[1];
 
+	FVector Lift = (WingLifts[0] + WingLifts[1]);
+	FVector FrontLift;
+	FVector BackLift;
+
+	if (FMath::Abs(AngleOfAttack) >= MinAutoPitchCl)
+	{
+		FrontLift = (MinPitchForce * FMath::Abs(DebugLiftCoefficient) * AutoLiftPitchScale);
+		BackLift = (MinPitchForce * 0.1 * AutoLiftPitchScale);
+	}
+	else
+	{
+		return FVector::ZeroVector;
+	}
+
 	TArray<FVector> WingLiftTorques =
 	{
-		CalcTorqueFromForceAtPos(FullPitchForce * (1 - FMath::Abs(AimerPercentComponent)), ActorForward * -1),
-		CalcTorqueFromForceAtPos(FullPitchForce, ActorForward)
+		CalcTorqueFromForceAtPos(BackLift, ActorForward * -1),
+		CalcTorqueFromForceAtPos(FrontLift, ActorForward)
 	};
 
 	// The closer the torque is to the forward axis, the stronger it'll be 
@@ -643,16 +705,22 @@ FVector UBalingaMovement::FGlideArgs::CalcLiftPitch(float AimerPercentComponent,
 
 	FVector FinalLiftTorque = ActorRight * (WingLiftTorques[0] + WingLiftTorques[1]).Size() * LiftTorqueProjectionScale;
 	// FVector FinalLiftTorque = (WingLiftTorques[0] + WingLiftTorques[1]).GetAbs() * LiftTorqueProjectionScale;
+
+	float PitchToOppVelocityDot = FinalLiftTorque.GetSafeNormal().Dot(FlowVelocity.GetSafeNormal() * -1);
+	PitchToOppVelocityDot = (PitchToOppVelocityDot == -1) ? 0 : PitchToOppVelocityDot;
+	float PitchOppVelocityScale = FMath::Max(PitchToOppVelocityDot * MaxPitchOppVelocityScale, 1);
+	FinalLiftTorque *= PitchOppVelocityScale;
+
 	return FinalLiftTorque;
 }
-
 
 FVector UBalingaMovement::FGlideArgs::CalcAutoAlign(FVector Drag, FVector LiftRoll, FVector LiftPitch, FVector FlowVelocity) const
 {
 	// Torque produced by drag generated ahead (not sure why it's not behind) of balinga's COG
 	// rotates around the same axis as the rotation between velocity and balinga's forward vector
 
-	FVector AlignToVelRot = FQuat::FindBetweenVectors(ActorForward, FlowVelocity).ToRotationVector();
+	FVector OriToAlignTo = FQuat::MakeFromRotationVector(ActorRight * VelPitchOffset).RotateVector(FlowVelocity.GetSafeNormal());
+	FVector AlignToVelRot = FQuat::FindBetweenVectors(ActorForward, OriToAlignTo).ToRotationVector();
 	FVector AlignToVelAxis = AlignToVelRot.GetSafeNormal();
 	DebugAutoAlignAxis = AlignToVelAxis;
 
@@ -660,11 +728,42 @@ FVector UBalingaMovement::FGlideArgs::CalcAutoAlign(FVector Drag, FVector LiftRo
 	FVector InputAxis = InputRot.GetSafeNormal();
 	DebugDesiredRotAxis = InputAxis;
 
+
 	// Scale alignment by similarity to input so the player doesn't feel like they have to fight the auto-align for control
 	float InputScale = AlignToVelAxis.Dot(InputAxis);
-	InputScale = (FMath::Sign(InputScale) == -1) ? 0 : InputScale; // Don't reverse axis (rotation direction)
-	InputScale = (FMath::Sign(InputRot.Size() < 0.001)) ? 1 : InputScale; // Disregard input scale if too small
-	AlignToVelRot *= InputScale * AutoAlignScale;
+
+	DebugTrueAutoAlignInputScale = InputScale;
+
+	if (!(InputRot.Size() < 0.001)) // Disregard input scale if too small
+	{
+		// Don't reverse axis (rotation direction)
+		if (FMath::Sign(InputScale) == -1)
+		{
+			if (FMath::Abs(InputScale) < 0.5) // Allow for small opposites
+			{
+				InputScale = 1;
+			}
+			else 
+			{
+				InputScale = 0;
+			}
+		}
+		else if (FMath::Sign(InputScale) == 1) // Only scale down more than right angle away
+		{
+			InputScale = 1;
+		}
+	}
+	else
+	{
+		InputScale = 1;
+	}
+
+	DebugAutoAlignInputScale = InputScale;
+
+	// InputScale = (FMath::Sign(InputScale) == -1 && InputScale <= 0.5) ? InputScale * -1 : InputScale; // Don't reverse axis (rotation direction)
+	// InputScale = (FMath::Sign(InputScale) == 1) ? 1 : InputScale; // Only scale down more than right angle away
+	// InputScale = (InputRot.Size() < 0.001) ? 1 : InputScale; // Disregard input scale if too small
+	AlignToVelRot *= InputScale * AutoAlignScale * AutoAlignActiveInputScale * AimerPercentPos.Y;
 
 	FVector ForwardPart = AlignToVelRot.ProjectOnTo(ActorForward) * AutoAlignForwardScale;
 	FVector RightPart = AlignToVelRot.ProjectOnTo(ActorRight) * AutoAlignRightScale;
@@ -673,9 +772,37 @@ FVector UBalingaMovement::FGlideArgs::CalcAutoAlign(FVector Drag, FVector LiftRo
 	FVector OldAlignToVelRot = AlignToVelRot;
 	AlignToVelRot = (ForwardPart + RightPart + UpPart).GetSafeNormal() * OldAlignToVelRot.Size();
 
-	GEngine->AddOnScreenDebugMessage(15, 100.0f, FColor::Red, FString::Printf(TEXT("Desired rot scale: [%s]"), *FString::SanitizeFloat(InputScale)));
-
 	return AlignToVelRot;
+}
+
+FVector UBalingaMovement::FGlideArgs::CalcRollStability(FVector LiftRoll, FVector LiftPitch) const
+{
+	FVector StableRight = GravityDirection.Cross(ActorForward);
+	FVector StableRightOpp = (GravityDirection * -1).Cross(ActorForward);
+
+	FVector RotToStable = FQuat::FindBetweenVectors(ActorRight, StableRight).ToRotationVector();
+	FVector RotToStableOpp = FQuat::FindBetweenVectors(ActorRight, StableRightOpp).ToRotationVector();
+
+	if (RotToStableOpp.Size() < RotToStable.Size())
+	{
+		RotToStable = RotToStableOpp;
+	}
+
+	FVector ForwardPart = RotToStable.ProjectOnTo(ActorForward);
+
+	FVector InputRot = CalcTorqueAccel((LiftRoll + LiftPitch), MomentInertia, DeltaTime);
+	FVector InputAxis = InputRot.GetSafeNormal();
+	// Scale alignment by similarity to input so the player doesn't feel like they have to fight the auto-align for control
+	float InputScale = ForwardPart.Dot(InputAxis);
+	DebugTrueRollStabilityInputScale = InputScale;
+
+	InputScale = (FMath::Sign(InputScale) == -1) ? 0 : InputScale; // Don't reverse axis (rotation direction)
+	InputScale = (FMath::Sign(InputRot.Size() < 0.001)) ? 1 : InputScale; // Disregard input scale if too small
+	DebugRollStabilityInputScale = InputScale;
+
+	ForwardPart *= InputScale * RollStabilityScale;
+
+	return ForwardPart;
 }
 
 FVector UBalingaMovement::FGlideArgs::CalcAngularDamp() const
@@ -711,13 +838,13 @@ FVector UBalingaMovement::CalcDesiredDiffDirection(FVector FlowDirection, FVecto
 	return DesiredDifferenceDirection;
 }
 
-float UBalingaMovement::CalcAngleOfAttack(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorRight, FVector ActorUp)
+float UBalingaMovement::CalcAngleOfAttack(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorForward, FVector ActorRight, FVector ActorUp)
 {
 	FVector RightIndependentVelocity = GivenVelocity - GivenVelocity.ProjectOnTo(ActorRight); // Essentially make velocity 2D
 
 	float AoaSign = CalcAoaSign(RightIndependentVelocity, GivenWingDirection, ActorRight, ActorUp);
 	float AoaDot = FMath::Abs(GivenWingDirection.Dot(RightIndependentVelocity.GetSafeNormal()));
-	return FMath::Acos(AoaDot) * AoaSign;
+	return (FMath::Acos(AoaDot) * AoaSign);
 }
 float UBalingaMovement::CalcAoaSign(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorRight, FVector ActorUp)
 {
@@ -728,6 +855,12 @@ float UBalingaMovement::CalcAoaSign(FVector GivenVelocity, FVector GivenWingDire
 	float AoaSign = FMath::Sign(AoaDifferenceDirection.Dot(ActorUp));
 
 	return AoaSign;
+}
+
+FVector UBalingaMovement::CalcWingDirection(float AimerPercentComponent, FVector ActorForward, FVector ActorRight)
+{
+	// Wing direction only changes the pitch
+	return FQuat::MakeFromRotationVector(ActorRight * FMath::DegreesToRadians(MaxWingAoaOffset) * AimerPercentComponent).RotateVector(ActorForward);
 }
 
 void UBalingaMovement::AddForceAtPos(FVector Force, FVector Position, float DeltaTime)
@@ -830,14 +963,11 @@ float UBalingaMovement::CalcLimitedSpeedScale(FVector GivenVelocity, FVector New
 		LimitedNewSpeedToSpeedRatio = 1 + MaxSpeedChangeToSpeedRatio;
 	}
 
-	//if (bShouldEnableDebug)
-	//{
-	//	UE_LOG(LogTemp, Warning, TEXT("Speed change to speed ratio: [%s]"), *FString::SanitizeFloat(SpeedChangeToSpeedRatio));
-	//	UE_LOG(LogTemp, Warning, TEXT("Speed to max speed ratio: [%s]"), *FString::SanitizeFloat(Speed / MaxGlideSpeed));
-	//	UE_LOG(LogTemp, Warning, TEXT("Clamped Max speed change to speed ratio: [%s]"), *FString::SanitizeFloat(ClampedMaxSpeedChangeToSpeedRatio));
-	//	UE_LOG(LogTemp, Warning, TEXT("Normal ratio: [%s]"), *FString::SanitizeFloat(NewSpeedToSpeedRatio));
-	//	UE_LOG(LogTemp, Warning, TEXT("Limited ratio: [%s]"), *FString::SanitizeFloat(LimitedNewSpeedToSpeedRatio));
-	//}
+	// UE_LOG(LogTemp, Warning, TEXT("Speed change to speed ratio: [%s]"), *FString::SanitizeFloat(SpeedChangeToSpeedRatio));
+	// UE_LOG(LogTemp, Warning, TEXT("Speed to max speed ratio: [%s]"), *FString::SanitizeFloat(Speed / GivenMaxSpeed));
+	// UE_LOG(LogTemp, Warning, TEXT("Clamped Max speed change to speed ratio: [%s]"), *FString::SanitizeFloat(ClampedMaxSpeedChangeToSpeedRatio));
+	// UE_LOG(LogTemp, Warning, TEXT("Normal ratio: [%s]"), *FString::SanitizeFloat(NewSpeedToSpeedRatio));
+	// UE_LOG(LogTemp, Warning, TEXT("Limited ratio: [%s]"), *FString::SanitizeFloat(LimitedNewSpeedToSpeedRatio));
 
 	return LimitedNewSpeedToSpeedRatio;
 }
