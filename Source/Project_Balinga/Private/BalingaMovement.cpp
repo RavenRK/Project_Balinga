@@ -172,7 +172,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			GivenGravityDirection, GivenGravityScale,
 			MinRollForceAccel, MaxRollOppVelocityScale, BonusLiftRollScale,
 			MinPitchForceAccel, MaxPitchOppVelocityScale, MinAutoPitchCl, AutoLiftPitchScale,
-			AutoAlignScale, VelPitchOffset, AutoAlignForwardScale, AutoAlignRightScale, AutoAlignUpScale,
+			AutoAlignScale, VelPitchOffset, AutoAlignForwardScale, AutoAlignRightScale, AutoAlignUpScale, AutoAlignActiveInputScale,
 			RollStabilityScale,
 			AngularDampScale
 		};
@@ -311,7 +311,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), Position, Position + GlideArgs.DebugAutoAlignAxis * 200, CylinderRadius, 15, FColor::Orange, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Orange);
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), Position, Position + GlideArgs.DebugDesiredRotAxis * 200, CylinderRadius, 15, FColor::Purple, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Purple);
 
-			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftRoll * 10, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Blue);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWSorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftRoll * 10, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Blue);
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftPitch, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
 
 			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + AngularVelocity * 100, CylinderRadius, 15, FColor::Green, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
@@ -325,7 +325,8 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			GEngine->AddOnScreenDebugMessage(5, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift accel: [%s] [%s] Cl: [%s]"), *DebugLiftAccel.ToCompactString(), *FString::SanitizeFloat(DebugLiftAccel.Size()), *FString::SanitizeFloat(GlideArgs.DebugLiftCoefficient)));
 			FVector DebugDragAccel = CalcForceAccel(Forces[FORCES_Drag], FixedDeltaTime);
 			GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("Drag accel: [%s] [%s] Cd: [%s]"), *DebugDragAccel.ToCompactString(), *FString::SanitizeFloat(DebugDragAccel.Size()), *FString::SanitizeFloat(GlideArgs.DebugDragCoefficient)));
-
+			FVector DebugGravityAccel = CalcForceAccel(Forces[FORCES_Gravity], FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(8, 100.0f, FColor::Blue, FString::Printf(TEXT("Gravity accel: [%s] [%s]"), *DebugGravityAccel.ToCompactString(), *FString::SanitizeFloat(DebugGravityAccel.Size())));
 			//GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Purple, FString::Printf(TEXT("Desired difference: [%s]"), *(FString::SanitizeFloat(DesiredDifference.X) + ", " + FString::SanitizeFloat(DesiredDifference.Y) + ", " + FString::SanitizeFloat(DesiredDifference.Z))));
 			//GEngine->AddOnScreenDebugMessage(13, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift desired scale: [%s]"), *FString::SanitizeFloat(LiftDesiredScale)));
 			//GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("FORCES_Drag desired scale: [%s]"), *FString::SanitizeFloat(DragDesiredScale)));
@@ -468,7 +469,7 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcGlideForcesAndTorques() const
 	{
 		// Self-corrects bird to face the position they're moving in
 		// Probably do something like desired difference scaling to see if it makes it more helpful
-		ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign] = CalcAutoAlign(ForcesAndTorques[FORCES_Drag], ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], FlowVelocity);
+		ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign] = CalcAutoAlign(ForcesAndTorques[FORCES_Drag], WingLifts[0] + WingLifts[1], ForcesAndTorques[FORCES_Gravity], ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], FlowVelocity);
 	}
 
 	if (bWhichForcesAndTorquesEnabled[FORCES_MAX + TORQUES_RollStability])
@@ -514,9 +515,9 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcLifts(float LeftOrRightLiftSca
 	//GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Black, FString::Printf(TEXT("Lift velocity difference: [%s]"), *FString::SanitizeFloat(VelocityDiff)));
 
 	FVector LiftDirection = FVector::CrossProduct(RightIndependentVelocity.GetSafeNormal(), ActorRight);
-	FVector Lift = FMath::Square(FlowVelocity.Size()) * LiftDirection * LiftScale * 0.5;
+	FVector Lift = FMath::Square(RightIndependentVelocity.Size()) * LiftDirection * LiftScale * 0.5;
 
-	// Clamping AoA gives us the lift curve we want
+	// Clamping AoA gives us the lift vs AoA curve we want
 	float MaxStallAoa = CriticalAoa * 2;
 	float ClampedAoa;
 	if (FMath::Abs(AngleOfAttack) > FMath::DegreesToRadians(MaxStallAoa))
@@ -714,7 +715,7 @@ FVector UBalingaMovement::FGlideArgs::CalcLiftPitch(float AimerPercentComponent,
 	return FinalLiftTorque;
 }
 
-FVector UBalingaMovement::FGlideArgs::CalcAutoAlign(FVector Drag, FVector LiftRoll, FVector LiftPitch, FVector FlowVelocity) const
+FVector UBalingaMovement::FGlideArgs::CalcAutoAlign(FVector Drag, FVector Lift, FVector Gravity, FVector LiftRoll, FVector LiftPitch, FVector FlowVelocity) const
 {
 	// Torque produced by drag generated ahead (not sure why it's not behind) of balinga's COG
 	// rotates around the same axis as the rotation between velocity and balinga's forward vector
@@ -763,7 +764,17 @@ FVector UBalingaMovement::FGlideArgs::CalcAutoAlign(FVector Drag, FVector LiftRo
 	// InputScale = (FMath::Sign(InputScale) == -1 && InputScale <= 0.5) ? InputScale * -1 : InputScale; // Don't reverse axis (rotation direction)
 	// InputScale = (FMath::Sign(InputScale) == 1) ? 1 : InputScale; // Only scale down more than right angle away
 	// InputScale = (InputRot.Size() < 0.001) ? 1 : InputScale; // Disregard input scale if too small
-	AlignToVelRot *= InputScale * AutoAlignScale * AutoAlignActiveInputScale * AimerPercentPos.Y;
+	DebugTrueAutoAlignInputScale = 1 + ((DebugDragCoefficient/2.01) * 0);
+
+	AlignToVelRot *= InputScale * AutoAlignScale * DebugTrueAutoAlignInputScale;
+
+	if (FMath::Abs(AimerPercentPos.Y)> 0.05 && Lift.Size() > Gravity.Size())
+	{
+		FVector RightPart = AlignToVelRot.ProjectOnTo(ActorRight);
+		AlignToVelRot -= RightPart;
+		RightPart *= AutoAlignActiveInputScale;
+		AlignToVelRot += RightPart;
+	}
 
 	FVector ForwardPart = AlignToVelRot.ProjectOnTo(ActorForward) * AutoAlignForwardScale;
 	FVector RightPart = AlignToVelRot.ProjectOnTo(ActorRight) * AutoAlignRightScale;

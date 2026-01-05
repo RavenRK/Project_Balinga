@@ -286,7 +286,8 @@ private:
 			const FVector& GravityDirection, float GravityScale, float MinRollForceAccel, float MaxRollOppVelocityScale,
 			float BonusLiftRollScale, float MinPitchForceAccel, float MaxPitchOppVelocityScale, float MinAutoPitchCl,
 			float AutoLiftPitchScale, float AutoAlignScale, float VelPitchOffset, float AutoAlignForwardScale,
-			float AutoAlignRightScale, float AutoAlignUpScale, float RollStabilityScale, float AngularDampScale)
+			float AutoAlignRightScale, float AutoAlignUpScale, float AutoAlignActiveInputScale,
+			float RollStabilityScale, float AngularDampScale)
 			: DeltaTime(DeltaTime),
 			  bWhichForcesAndTorquesEnabled(BWhichForcesAndTorquesEnabled),
 			  Mass(Mass),
@@ -321,10 +322,12 @@ private:
 			  AutoAlignForwardScale(AutoAlignForwardScale),
 			  AutoAlignRightScale(AutoAlignRightScale),
 			  AutoAlignUpScale(AutoAlignUpScale),
+			  AutoAlignActiveInputScale(AutoAlignActiveInputScale),
 			  RollStabilityScale(RollStabilityScale),
 			  AngularDampScale(AngularDampScale)
 		{
 		}
+
 
 		FGlideArgs
 		(
@@ -460,7 +463,7 @@ private:
 
 		FVector CalcLiftPitch(float AimerPercentComponent, TArray<FVector> WingLifts, FVector FlowVelocity) const;
 		
-		FVector CalcAutoAlign(FVector Drag, FVector LiftRoll, FVector LiftPitch, FVector FlowVelocity) const;
+		FVector CalcAutoAlign(FVector Drag, FVector Lift, FVector Gravity, FVector LiftRoll, FVector LiftPitch, FVector FlowVelocity) const;
 
 		FVector CalcRollStability(FVector LiftRoll, FVector LiftPitch) const;
 

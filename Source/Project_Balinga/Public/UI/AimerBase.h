@@ -28,8 +28,8 @@ private:
 	float ScreenScale;
 	FVector2D LastVelocity;
 
-	UPROPERTY(EditDefaultsOnly) float XSmoothTime;
-	UPROPERTY(EditDefaultsOnly) float YSmoothTime;
+	UPROPERTY(EditAnywhere) float XSmoothTime;
+	UPROPERTY(EditAnywhere) float YSmoothTime;
 
 	void FollowMouseVelocity(float DeltaSeconds);
 
