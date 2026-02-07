@@ -7,6 +7,7 @@
 #include "BalingaMovement.generated.h"
 
 
+class FAeroStruct;
 class UAimerBase;
 
 // Similar to EMovemementMode in EngineTypes.h, none and max are there out of convention
@@ -61,8 +62,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "General") float AngularVelocityScale;
 	float AccumulatedDeltaTime; // Amount of delta time passed to substep through
 	float FixedDeltaTime; // Minimum amount of milliseconds passed to perform a substep
-	FVector TrueVelocity;
-	float TrueVelToVelMagRatio;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") TArray<bool> bWhichGlideForcesAndTorquesEnabled;
 	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding") bool bShouldLimitGlideSpeed;
@@ -137,29 +136,31 @@ private:
 
 	UPROPERTY() TObjectPtr<ABalingaBase> BalingaOwner; // Used to access Balinga things outside CharacterOwner
 
+	FAeroStruct* AeroStruct;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Aero structure") float WingEfficieny;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Aero structure") float WingChord;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Aero structure") float WingSpan;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Aero structure") float TailChord;
+	UPROPERTY(EditDefaultsOnly, Category = "Balinga Movement: Gliding|Aero structure") float TailSpan;
+
+		
+
 	void PhysGlide(float DeltaTime, int32 Iterations);
 
 	static FVector CalcDesiredDiffDirection(FVector FlowDirection, FVector ActorForward);
 
-	static float CalcAngleOfAttack(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorForward, FVector ActorRight, FVector ActorUp);
-	static float CalcAoaSign(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorRight, FVector ActorUp);
 	FVector CalcWingDirection(float AimerPercentComponent, FVector ActorForward, FVector ActorRight);
 
 	// Adds a given force at a given position relative to the actor. 
 	void AddForceAtPos(FVector Force, FVector Position, float DeltaTime);
-
 	void AddForceToVel(FVector Force, float DeltaTime);
 	FVector CalcAccelForce(FVector GivenAcceleration, float DeltaTime) const;
-	static FVector CalcAccelForce(FVector GivenAcceleration, float GivenMass, float DeltaTime);
 	FVector CalcForceAccel(FVector Force, float DeltaTime) const;
-	static FVector CalcForceAccel(FVector Force, float GivenMass, float DeltaTime);
 
-	static FVector CalcTorqueFromForceAtPos(FVector Force, FVector Position);
 	void AddTorqueToAngularVel(FVector Torque, float DeltaTime);
 	FVector CalcAccelTorque(FVector GivenAcceleration, float DeltaTime) const;
-	static FVector CalcAccelTorque(FVector GivenAcceleration, float GivenMomentInertia, float DeltaTime);
 	FVector CalcTorqueAccel(FVector Torque, float DeltaTime) const;
-	static FVector CalcTorqueAccel(FVector Torque, float GivenMomentInertia, float DeltaTime);
 
 	static FVector CombineRotationVectors(TArray<FVector> Vectors);
 
@@ -207,6 +208,7 @@ private:
 		TORQUES_AngularDamp,
 		TORQUES_MAX
 	};
+
 
 	class FGlideArgs
 	{
@@ -469,6 +471,9 @@ private:
 
 		FVector CalcAngularDamp() const;
 	};
+
+
+
 
 	// Holds data used in phys functions that might change and thus need to be saved to accurately replicate moves on the server
 	class FSavedMove_Balinga : public FSavedMove_Character

@@ -1,0 +1,25 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "ToyMaths",
+	"Description": "Custom maths library for my projects.",
+	"Category": "",
+	"CreatedBy": "Prankalanka",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
+	{
+		"Name": "ToyMaths",
+		"Type": "Runtime",
+		"LoadingPhase": "Default"
+	}],
+	"Plugins": [
+	]
+}
+

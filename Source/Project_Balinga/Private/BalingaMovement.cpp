@@ -8,6 +8,10 @@
 #include "Developer/NaniteUtilities/Public/Affine.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "ForceAndTorque.h"
+#include "AeroObject.h"
+#include "AeroStruct.h"
+#include "Wing.h"
 
 void UBalingaMovement::InitializeComponent()
 {
@@ -75,6 +79,20 @@ void UBalingaMovement::EnterGlide()
 
 	AngularVelocity = FVector::ZeroVector;
 
+	FWing* RightWing = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+	FWing* LeftWing = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+	FWing* Tail = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, TailChord, -1, TailSpan, 0);
+
+	FVector ActorRight = CharacterOwner->GetActorRightVector();
+	FVector ActorForward = CharacterOwner->GetActorForwardVector();
+	FVector ActorUp = CharacterOwner->GetActorUpVector();
+
+	AeroStruct = new FAeroStruct({ RightWing, LeftWing, Tail }, { FVector(0.25, 2, 0), FVector(0.25, -2, 0), FVector(-2, 0, 0) }, ActorForward, ActorRight, ActorUp);
+
+	FVector OldLocation = UpdatedComponent->GetComponentLocation();
+	AeroStruct->SetPos(OldLocation);
+	AeroStruct->UpdateObjectPosFromPosition();
+
 	SetMovementMode(MOVE_Custom, CMOVE_Glide);
 }
 void UBalingaMovement::ExitGlide()
@@ -112,15 +130,15 @@ void UBalingaMovement::FlapReleased()
 
 void UBalingaMovement::LandPressed()
 {
-	FVector ZeroedEulerRot = FVector(0, 0, 0);
-	FVector OtherEulerRot = FVector(0, 1, 0);
-	FVector EulerRot = FVector(0, 90, 0);
-	FQuat QuatRot = FQuat::MakeFromEuler(CombineRotationVectors({ OtherEulerRot, EulerRot }));
-	FVector ConvertedEulerRot = QuatRot.Euler();
-	UE_LOG(LogTemp, Warning, TEXT("Euler rotation: [%s]"), *(EulerRot.ToString()));
-	UE_LOG(LogTemp, Warning, TEXT("Other euler rotation: [%s]"), *(OtherEulerRot.ToString()));
-	UE_LOG(LogTemp, Warning, TEXT("Quaternion rotation: [%s]"), *(QuatRot.ToString()));
-	UE_LOG(LogTemp, Warning, TEXT("Converted euler rotation: [%s]"), *(ConvertedEulerRot.ToString()));
+	// FVector ZeroedEulerRot = FVector(0, 0, 0);
+	// FVector OtherEulerRot = FVector(0, 1, 0);
+	// FVector EulerRot = FVector(0, 90, 0);
+	// FQuat QuatRot = FQuat::MakeFromEuler(CombineRotationVectors({ OtherEulerRot, EulerRot }));
+	// FVector ConvertedEulerRot = QuatRot.Euler();
+	// UE_LOG(LogTemp, Warning, TEXT("Euler rotation: [%s]"), *(EulerRot.ToString()));
+	// UE_LOG(LogTemp, Warning, TEXT("Other euler rotation: [%s]"), *(OtherEulerRot.ToString()));
+	// UE_LOG(LogTemp, Warning, TEXT("Quaternion rotation: [%s]"), *(QuatRot.ToString()));
+	// UE_LOG(LogTemp, Warning, TEXT("Converted euler rotation: [%s]"), *(ConvertedEulerRot.ToString()));
 
 	ExitGlide();
 }
@@ -138,6 +156,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 	AimerPercentPos.Y *= -1;
 	AimerPercentPos.X *= -1;
 
+
 	AccumulatedDeltaTime += DeltaTime;
 
 	// FixedDeltaTime for consistent physics
@@ -150,10 +169,8 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 		FVector ActorUp = CharacterOwner->GetActorUpVector();
 
 		FVector WingDirection = CalcWingDirection(AimerPercentPos.Y, ActorForward, ActorRight);
-		UE_LOG(LogTemp, Warning, TEXT("Wing direction [%s]"), *WingDirection.ToString())
-		UE_LOG(LogTemp, Warning, TEXT("Actor Forward [%s]"), *ActorForward.ToString())
 
-		float AngleOfAttack = CalcAngleOfAttack(Velocity, WingDirection, ActorForward, ActorRight, ActorUp);
+		float AngleOfAttack = FAeroObject::CalcAngleOfAttack(Velocity, WingDirection, ActorRight, ActorUp);
 
 		FVector GivenGravityDirection = GetGravityDirection() * -1;
 		float GivenGravityScale = GetGravityZ() * GlideGravityScale;
@@ -208,6 +225,51 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			Force = AveragedForcesAndTorquesAndForceAndTorque.Get<2>();
 			Torque = AveragedForcesAndTorquesAndForceAndTorque.Get<3>();
 		}
+
+		FVector OldLocation = UpdatedComponent->GetComponentLocation();
+		AeroStruct->SetPos(OldLocation);
+
+		AeroStruct->SetOrientation(ActorForward, ActorRight, ActorUp);
+
+		// if (ThrustThisFrame.Size() == 0)
+		{
+			AeroStruct->SetObjectAxisOffsets({ (FMath::Sign(AimerPercentPos.X) == 1)? 1 : 0}, { {float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(AimerPercentPos.X) * 1), 0, 0} });
+
+			AeroStruct->SetObjectAxisOffsets({ 2 }, { {float (FMath::DegreesToRadians(MaxWingAoaOffset) * AimerPercentPos.Y * -1), 0, 0} });
+		}
+
+		// AeroStruct->AeroObjects[0]->SetHedral(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[1]->SetHedral(FMath::DegreesToRadians(10));
+
+		AeroStruct->AeroObjects[0]->SetSweep(FMath::DegreesToRadians(-10));
+		AeroStruct->AeroObjects[1]->SetSweep(FMath::DegreesToRadians(10));
+
+		AeroStruct->UpdateObjectPosAndVelFromPosition();
+
+		TArray<TArray<FVector>> ForcesAndTorquesAtAeroObjects = AeroStruct->CalcForcesAndTorques();
+		FVector Lift = FVector::ZeroVector;
+		FVector Drag = FVector::ZeroVector;
+		FVector InducedDrag = FVector::ZeroVector;
+
+		FVector LiftTorque = FVector::ZeroVector;
+		FVector DragTorque = FVector::ZeroVector;
+		FVector InducedDragTorque = FVector::ZeroVector;
+
+		for (int i = 0; i < 3; i++)
+		{
+			Lift += ForcesAndTorquesAtAeroObjects[i][0];
+			Drag += ForcesAndTorquesAtAeroObjects[i][1];
+			InducedDrag += ForcesAndTorquesAtAeroObjects[i][2];
+			LiftTorque += ForcesAndTorquesAtAeroObjects[i][3];
+			DragTorque += ForcesAndTorquesAtAeroObjects[i][4]; 
+			InducedDragTorque += ForcesAndTorquesAtAeroObjects[i][5];
+		}
+
+		FVector Gravity = GlideGravityScale * GetGravityZ() * GetGravityDirection() * Mass * -1;
+		FVector Thrust = (ThrustThisFrame.GetSafeNormal() * (1 - AimerPercentPos.Size()) + ActorRight * AimerPercentPos.X + ActorUp * AimerPercentPos.Y * -1) * ThrustThisFrame.Size();
+
+		Force = Lift + Drag + InducedDrag + Gravity + ThrustThisFrame;
+		Torque = LiftTorque + DragTorque + InducedDragTorque + Torques[TORQUES_AngularDamp];
 
 		// Apply force to velocity
 
@@ -269,7 +331,6 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 
 		bJustTeleported = false;
 
-		FVector OldLocation = UpdatedComponent->GetComponentLocation();
 		FHitResult Hit(1.f);
 		FVector AdjustedVelocity = Velocity * FixedDeltaTime;
 
@@ -291,6 +352,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation) / FixedDeltaTime;
 		}
 
+
 		if (bShouldEnableDebug)
 		{
 			FVector Position = UpdatedComponent->GetComponentLocation() + AdjustedVelocity;
@@ -298,14 +360,11 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			FVector RightLiftPosition = BalingaOwner->RightLiftArrow->GetComponentLocation() + AdjustedVelocity;
 			FVector DragPosition = BalingaOwner->DragArrow->GetComponentLocation() + AdjustedVelocity;
 
+
 			float VlogScale = 1;
 			float CylinderRadius = 1.5;
 			float ArrowHeight = 20;
 			float ArrowWidth = 0.28;
-
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), LeftLiftPosition, LeftLiftPosition + CalcForceAccel(Forces[FORCES_LeftWingLift], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), RightLiftPosition, RightLiftPosition + CalcForceAccel(Forces[FORCES_RightWingLift], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + CalcForceAccel(Forces[FORCES_Drag], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Red, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
 
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), Position, Position + Torque.GetSafeNormal() * 200, CylinderRadius, 15, FColor::Green, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), Position, Position + GlideArgs.DebugAutoAlignAxis * 200, CylinderRadius, 15, FColor::Orange, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Orange);
@@ -314,29 +373,34 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWSorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftRoll * 10, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Blue);
 			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + GlideArgs.DebugTrueLiftPitch, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
 
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + AngularVelocity * 100, CylinderRadius, 15, FColor::Green, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
-			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + OldAngularVelocity * 100, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + AngularVelocity * 100, CylinderRadius, 15, FColor::Green, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + OldAngularVelocity * 100, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
 
 			GEngine->AddOnScreenDebugMessage(1, 100.0f, FColor::Green, FString::Printf(TEXT("Velocity: [%s] [%s]"), *Velocity.ToCompactString(), *FString::SanitizeFloat(Velocity.Size())));
-			GEngine->AddOnScreenDebugMessage(2, 100.0f, FColor::Cyan, FString::Printf(TEXT("Thrust accel: [%s]"), *CalcForceAccel(Forces[FORCES_Thrust], FixedDeltaTime).ToCompactString()));
+			FVector ThrustAccel = CalcForceAccel(ThrustThisFrame, FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(2, 100.0f, FColor::Cyan, FString::Printf(TEXT("Thrust accel: [%s] [%s]"), *ThrustAccel.ToCompactString(), *FString::SanitizeFloat(ThrustAccel.Size())));
 			
 			GEngine->AddOnScreenDebugMessage(3, 100.0f, FColor::Purple, FString::Printf(TEXT("Angle of Attack: [%s]"), *FString::SanitizeFloat(FMath::RadiansToDegrees(AngleOfAttack))));
-			FVector DebugLiftAccel = CalcForceAccel((Forces[EGlideForces::FORCES_LeftWingLift] + Forces[FORCES_RightWingLift]), FixedDeltaTime);
+			// FVector DebugLiftAccel = CalcForceAccel((Forces[EGlideForces::FORCES_LeftWingLift] + Forces[FORCES_RightWingLift]), FixedDeltaTime);
+			FVector DebugLiftAccel = CalcForceAccel(Lift, FixedDeltaTime);
+
 			GEngine->AddOnScreenDebugMessage(5, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift accel: [%s] [%s] Cl: [%s]"), *DebugLiftAccel.ToCompactString(), *FString::SanitizeFloat(DebugLiftAccel.Size()), *FString::SanitizeFloat(GlideArgs.DebugLiftCoefficient)));
-			FVector DebugDragAccel = CalcForceAccel(Forces[FORCES_Drag], FixedDeltaTime);
+			// FVector DebugDragAccel = CalcForceAccel(Forces[FORCES_Drag], FixedDeltaTime);
+			FVector DebugDragAccel = CalcForceAccel(Drag, FixedDeltaTime);
 			GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("Drag accel: [%s] [%s] Cd: [%s]"), *DebugDragAccel.ToCompactString(), *FString::SanitizeFloat(DebugDragAccel.Size()), *FString::SanitizeFloat(GlideArgs.DebugDragCoefficient)));
-			FVector DebugGravityAccel = CalcForceAccel(Forces[FORCES_Gravity], FixedDeltaTime);
+			// FVector DebugGravityAccel = CalcForceAccel(Forces[FORCES_Gravity], FixedDeltaTime);
+			FVector DebugGravityAccel = CalcForceAccel(Gravity, FixedDeltaTime);
 			GEngine->AddOnScreenDebugMessage(8, 100.0f, FColor::Blue, FString::Printf(TEXT("Gravity accel: [%s] [%s]"), *DebugGravityAccel.ToCompactString(), *FString::SanitizeFloat(DebugGravityAccel.Size())));
-			//GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Purple, FString::Printf(TEXT("Desired difference: [%s]"), *(FString::SanitizeFloat(DesiredDifference.X) + ", " + FString::SanitizeFloat(DesiredDifference.Y) + ", " + FString::SanitizeFloat(DesiredDifference.Z))));
-			//GEngine->AddOnScreenDebugMessage(13, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift desired scale: [%s]"), *FString::SanitizeFloat(LiftDesiredScale)));
-			//GEngine->AddOnScreenDebugMessage(7, 100.0f, FColor::Red, FString::Printf(TEXT("FORCES_Drag desired scale: [%s]"), *FString::SanitizeFloat(DragDesiredScale)));
 
 			//FDebugDrawer::DrawVlogArrow(CharacterOwner->GetWorld(), "LogTemp", Position, Position + AngularVelocity, CylinderRadius, FColor::Green, "Angular velocity" + AngularVelocity.ToCompactString(), ArrowHeight, ArrowWidth, FColor::Green, "");
 
 			//GEngine->AddOnScreenDebugMessage(6, 100.0f, FColor::Yellow, FString::Printf(TEXT("Lift torque projection scale: [%s]"), *FString::SanitizeFloat(LiftTorqueProjectionScale)));
-			GEngine->AddOnScreenDebugMessage(9, 100.0f, FColor::Emerald, FString::Printf(TEXT("Angular velocity: [%s] [%s]"), *AngularVelocity.ToString(), *FString::SanitizeFloat(AngularVelocity.Size())));
-			// GEngine->AddOnScreenDebugMessage(10, 100.0f, FColor::Green, FString::Printf(TEXT("Angular accel: [%s]"), *CalcTorqueAccel(Torque, FixedDeltaTime).ToString()));
-			// GEngine->AddOnScreenDebugMessage(11, 100.0f, FColor::Silver, FString::Printf(TEXT("Aimer position: [%s]"), *AimerPosition.ToString()));
+			FVector InducedDragAccel = CalcForceAccel(InducedDrag, FixedDeltaTime);
+			GEngine->AddOnScreenDebugMessage(9, 100.0f, FColor::Orange, FString::Printf(TEXT("Induced drag accel: [%s] [%s]"), *InducedDragAccel.ToCompactString(), *FString::SanitizeFloat(InducedDragAccel.Size())));
+
+			GEngine->AddOnScreenDebugMessage(10, 100.0f, FColor(20, 150, 41), FString::Printf(TEXT("Angular velocity: [%s] [%s]"), *AngularVelocity.ToString(), *FString::SanitizeFloat(AngularVelocity.Size())));
+			// GEngine->AddOnScreenDebugMessage(11, 100.0f, FColor(120, 150, 130), FString::Printf(TEXT("Angular accel: [%s]"), *CalcTorqueAccel(Torque, FixedDeltaTime).ToString()));
+			GEngine->AddOnScreenDebugMessage(11, 100.0f, FColor::Silver, FString::Printf(TEXT("Aimer position: [%s]"), *AimerPercentPos.ToString()));
 			FVector LiftRollAccel = CalcTorqueAccel(Torques[TORQUES_LiftRoll], FixedDeltaTime);
 			GEngine->AddOnScreenDebugMessage(12, 100.0f, FColor::Blue, FString::Printf(TEXT("Wing roll: [%s] [%s]"), *LiftRollAccel.ToString(), *FString::SanitizeFloat(LiftRollAccel.Size())));
 			FVector LiftPitchAccel = CalcTorqueAccel(Torques[TORQUES_LiftPitch], FixedDeltaTime);
@@ -350,8 +414,30 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 			FVector AngularDampAccel = CalcTorqueAccel(Torques[TORQUES_AngularDamp], FixedDeltaTime);
 			GEngine->AddOnScreenDebugMessage(16, 100.0f, FColor::Orange, FString::Printf(TEXT("Angular damp: [%s] [%s]"), *AngularDampAccel.ToString(), *FString::SanitizeFloat(AngularDampAccel.Size())));
 
-			// GEngine->AddOnScreenDebugMessage(17, 100.0f, FColor::Turquoise, FString::Printf(TEXT("True Velocity: [%s] [%s]"), *TrueVelocity.ToCompactString(), *FString::SanitizeFloat(TrueVelocity.Size())));
-			// GEngine->AddOnScreenDebugMessage(18, 100.0f, FColor::Cyan, FString::Printf(TEXT("True Velocity to Velocity Ratio: [%s]"), *FString::SanitizeFloat(TrueVelToVelMagRatio)));
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), LeftLiftPosition, LeftLiftPosition + CalcForceAccel(Forces[FORCES_LeftWingLift], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), RightLiftPosition, RightLiftPosition + CalcForceAccel(Forces[FORCES_RightWingLift], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + CalcForceAccel(Forces[FORCES_Drag], FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Red, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
+
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), RightLiftPosition, RightLiftPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[0][0], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), RightLiftPosition, RightLiftPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[0][1], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Red, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), RightLiftPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][1], Mass, FixedDeltaTime) + ArrowHeight * ForcesAndTorquesAtAeroObjects[2][1].GetSafeNormal(), RightLiftPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][1], Mass, FixedDeltaTime) + ArrowHeight * ForcesAndTorquesAtAeroObjects[2][1].GetSafeNormal() + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[0][2], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Orange, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Orange);
+
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), LeftLiftPosition, LeftLiftPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[1][0], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), LeftLiftPosition, LeftLiftPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[1][1], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Red, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), LeftLiftPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][1], Mass, FixedDeltaTime) + ArrowHeight * ForcesAndTorquesAtAeroObjects[2][1].GetSafeNormal(), LeftLiftPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][1], Mass, FixedDeltaTime) + ArrowHeight * ForcesAndTorquesAtAeroObjects[2][1].GetSafeNormal() +FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[1][2], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Orange, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Orange);
+
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][0], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Yellow, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Yellow);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][1], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Red, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
+			FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][1], Mass, FixedDeltaTime) + ArrowHeight * ForcesAndTorquesAtAeroObjects[2][1].GetSafeNormal(), DragPosition + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][1], Mass, FixedDeltaTime) + ArrowHeight * ForcesAndTorquesAtAeroObjects[2][1].GetSafeNormal() + FForce::CalcForceAccel(ForcesAndTorquesAtAeroObjects[2][2], Mass, FixedDeltaTime) * VlogScale, CylinderRadius, 15, FColor::Orange, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Orange);
+
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + AeroStruct->AeroObjects[1]->CalcForward(AeroStruct->Forward, AeroStruct->Right, AeroStruct->Up) * 100, CylinderRadius, 15, FColor::Green, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Green);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + AeroStruct->AeroObjects[1]->CalcRight(AeroStruct->Right, AeroStruct->Forward, AeroStruct->Up) * 100, CylinderRadius, 15, FColor::Red, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Red);
+			// FDebugDrawer::DrawDebugArrow(CharacterOwner->GetWorld(), DragPosition, DragPosition + AeroStruct->AeroObjects[1]->CalcUp(AeroStruct->Up, AeroStruct->Forward, AeroStruct->Right) * 100, CylinderRadius, 15, FColor::Blue, false, -1, 0, 1, ArrowHeight, ArrowWidth, 15, FColor::Blue);
+
+			DrawDebugCircle(CharacterOwner->GetWorld(), AeroStruct->AeroObjects[0]->Position + AdjustedVelocity, 10, 16, FColor::White);
+			DrawDebugCircle(CharacterOwner->GetWorld(), AeroStruct->AeroObjects[1]->Position + AdjustedVelocity, 10, 16, FColor::White);
+			DrawDebugCircle(CharacterOwner->GetWorld(), AeroStruct->AeroObjects[2]->Position + AdjustedVelocity, 10, 16, FColor::White);
+
 		}
 
 		// Will add more when we fully do non-jittery deltatime
@@ -366,15 +452,15 @@ TTuple<TArray<FVector>, TArray<FVector>, FVector, FVector> UBalingaMovement::FGl
 	float PredictionScale
 ) const
 {
-	FVector PredictedVelocity = Velocity + CalcForceAccel(Force, Mass, DeltaTime * PredictionScale);
+	FVector PredictedVelocity = Velocity + FForce::CalcForceAccel(Force, Mass, DeltaTime * PredictionScale);
 	FVector PredictedAngularVelocity = FVector::ZeroVector;
 	if (bShouldUseEulerRotation)
 	{
-		PredictedAngularVelocity = AngularVelocity + CalcTorqueAccel(Torque, MomentInertia, DeltaTime * PredictionScale);
+		PredictedAngularVelocity = AngularVelocity + FTorque::CalcTorqueAccel(Torque, MomentInertia, DeltaTime * PredictionScale);
 	}
 	else
 	{
-		PredictedAngularVelocity = CombineRotationVectors({ CalcTorqueAccel(Torque, MomentInertia, DeltaTime * PredictionScale), AngularVelocity});
+		PredictedAngularVelocity = CombineRotationVectors({ FTorque::CalcTorqueAccel(Torque, MomentInertia, DeltaTime * PredictionScale), AngularVelocity});
 	}
 
 	FGlideArgs PredictedArgs = FGlideArgs(*this);
@@ -412,7 +498,6 @@ TTuple<TArray<FVector>, TArray<FVector>, FVector, FVector> UBalingaMovement::FGl
 	return TTuple<TArray<FVector>, TArray<FVector>, FVector, FVector>(AverageForces, AverageTorques, AverageForce, AverageTorque);
 }
 
-
 TArray<FVector> UBalingaMovement::FGlideArgs::CalcGlideForcesAndTorques() const
 {
 	TArray<FVector> ForcesAndTorques;
@@ -448,7 +533,7 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcGlideForcesAndTorques() const
 	if (bWhichForcesAndTorquesEnabled[FORCES_RightWingLift]) { ForcesAndTorques[FORCES_RightWingLift] = WingLifts[1]; }
 
 	// Have drag take current forces into account
-	FlowVelocity += CalcForceAccel
+	FlowVelocity += FForce::CalcForceAccel
 	(
 		(ForcesAndTorques[FORCES_LeftWingLift] + ForcesAndTorques[FORCES_RightWingLift] + ForcesAndTorques[FORCES_Thrust] + ForcesAndTorques[FORCES_Gravity]),
 		Mass, DeltaTime
@@ -481,17 +566,17 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcGlideForcesAndTorques() const
 	FVector AngularVelocityCopy = AngularVelocity;
 	if (bShouldUseEulerRotation)
 	{
-		AngularVelocityCopy += CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], MomentInertia, DeltaTime);
-		AngularVelocityCopy += CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], MomentInertia, DeltaTime);
-		AngularVelocityCopy += CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign], MomentInertia, DeltaTime);
-		AngularVelocityCopy += CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_RollStability], MomentInertia, DeltaTime);
+		// AngularVelocityCopy += FTorque::CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], MomentInertia, DeltaTime);
+		// AngularVelocityCopy += FTorque::CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], MomentInertia, DeltaTime);
+		// AngularVelocityCopy += FTorque::CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign], MomentInertia, DeltaTime);
+		// AngularVelocityCopy += FTorque::CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_RollStability], MomentInertia, DeltaTime);
 	}
 	else
 	{
-		AngularVelocityCopy = CombineRotationVectors({CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], MomentInertia, DeltaTime), AngularVelocityCopy});
-		AngularVelocityCopy = CombineRotationVectors({CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], MomentInertia, DeltaTime), AngularVelocityCopy});
-		AngularVelocityCopy = CombineRotationVectors({ CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign], MomentInertia, DeltaTime), AngularVelocityCopy });
-		AngularVelocityCopy = CombineRotationVectors({ CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_RollStability], MomentInertia, DeltaTime), AngularVelocityCopy });
+		AngularVelocityCopy = CombineRotationVectors({FTorque::CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftRoll], MomentInertia, DeltaTime), AngularVelocityCopy});
+		AngularVelocityCopy = CombineRotationVectors({FTorque::CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_LiftPitch], MomentInertia, DeltaTime), AngularVelocityCopy});
+		AngularVelocityCopy = CombineRotationVectors({ FTorque::CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_AutoAlign], MomentInertia, DeltaTime), AngularVelocityCopy });
+		AngularVelocityCopy = CombineRotationVectors({ FTorque::CalcTorqueAccel(ForcesAndTorques[FORCES_MAX + TORQUES_RollStability], MomentInertia, DeltaTime), AngularVelocityCopy });
 	}
 	if (bWhichForcesAndTorquesEnabled[FORCES_MAX + TORQUES_AngularDamp])
 	{
@@ -532,16 +617,16 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcLifts(float LeftOrRightLiftSca
 	float LiftCoefficient = FMath::Sin(ClampedAoa * (180/MaxStallAoa));
 	Lift *= LiftCoefficient;
 
-	FVector LiftAccel = CalcForceAccel(Lift, Mass, DeltaTime);
+	FVector LiftAccel = FForce::CalcForceAccel(Lift, Mass, DeltaTime);
 	
 	if (Lift.Size() != 0) // Prevents NaN from zero divisor
 	{
 		// Check if the next Aoa sign is different to this one, if so overshoot the Aoa less or not at all
-		float AssumedAoaSign = CalcAoaSign(FlowVelocity + LiftAccel, WingDirection, ActorRight, ActorUp);
+		float AssumedAoaSign = FAeroObject::CalcAoaSign(FlowVelocity + LiftAccel, WingDirection, ActorRight, ActorUp);
 	
 		if (AssumedAoaSign != FMath::Sign(AngleOfAttack))
 		{
-			LiftAccel = CalcForceAccel(Lift / LiftCoefficient, Mass, DeltaTime);
+			LiftAccel = FForce::CalcForceAccel(Lift / LiftCoefficient, Mass, DeltaTime);
 	
 			FVector AoaDifference = (WingDirection - RightIndependentVelocity.GetSafeNormal());
 			float AoaLiftProjectionScale = (AoaDifference.Dot(LiftAccel) / LiftAccel.Size());
@@ -553,7 +638,7 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcLifts(float LeftOrRightLiftSca
 	DebugLiftCoefficient = LiftCoefficient;
 	// Distribute lift to allow for torque
 
-	Lift = CalcAccelForce(LiftAccel, Mass, DeltaTime);
+	Lift = FForce::CalcAccelForce(LiftAccel, Mass, DeltaTime);
 	FVector LeftWingLift = Lift / 2;
 	FVector RightWingLift = Lift / 2;
 
@@ -570,7 +655,7 @@ TArray<FVector> UBalingaMovement::FGlideArgs::CalcLifts(float LeftOrRightLiftSca
 
 	// Lift can be greater than velocity IRL (accel needs to be bigger than vel, to even start moving), 
 	// but at high speeds that would normally break the wing of the bird/plane
-	LiftAccel = CalcForceAccel(Lift, Mass, DeltaTime);
+	LiftAccel = FForce::CalcForceAccel(Lift, Mass, DeltaTime);
 	if (LiftAccel.Size() > FlowVelocity.Size())
 	{
 		float LiftClampScale = (FlowVelocity.Size() / LiftAccel.Size());
@@ -592,7 +677,7 @@ FVector UBalingaMovement::FGlideArgs::CalcDrag(FVector FlowVelocity) const
 	DebugDragCoefficient = DragCoefficient;
 
 	float VelocitySize = FlowVelocity.Size();
-	float DragAccelSize = CalcForceAccel(Drag, Mass, DeltaTime).Size();
+	float DragAccelSize = FForce::CalcForceAccel(Drag, Mass, DeltaTime).Size();
 	
 	if (DragAccelSize > VelocitySize)
 	{
@@ -608,7 +693,7 @@ FVector UBalingaMovement::FGlideArgs::CalcLiftRoll(float AimerPercentComponent, 
 	FVector RightIndependentVelocity = FlowVelocity - FlowVelocity.ProjectOnTo(ActorRight); // Forgot the exact effect of this, understand and test later
 	FVector LiftDirection = FVector::CrossProduct(RightIndependentVelocity.GetSafeNormal(), ActorRight).GetSafeNormal().GetAbs();
 	// This will mean if we add mass to an object, rotation wont care (not exactly what i want, figure out later)
-	FVector MinRollForce = CalcAccelForce((LiftDirection * MinRollForceAccel) * DeltaTime, Mass, DeltaTime);
+	FVector MinRollForce = FForce::CalcAccelForce((LiftDirection * MinRollForceAccel) * DeltaTime, Mass, DeltaTime);
 
 	// Add a BonusLiftRollScale * LiftSize amount of magnitude to MinRollForce's magnitude
 	// Account for zeroed MinRollForce, in which case it's replaced with the lift direction (mag of 1)
@@ -628,8 +713,8 @@ FVector UBalingaMovement::FGlideArgs::CalcLiftRoll(float AimerPercentComponent, 
 
 	TArray<FVector> WingLiftTorques =	
 	{
-		CalcTorqueFromForceAtPos(RollForces[0], ActorRight * -1),
-		CalcTorqueFromForceAtPos(RollForces[1], ActorRight)
+		FTorque::CalcTorqueFromForceAtPos(RollForces[0], ActorRight * -1),
+		FTorque::CalcTorqueFromForceAtPos(RollForces[1], ActorRight)
 	};
 
 	// The closer the torque is to the forward axis, the stronger it'll be 
@@ -657,7 +742,7 @@ FVector UBalingaMovement::FGlideArgs::CalcLiftPitch(float AimerPercentComponent,
 	//FVector RightIndependentVelocity = FlowVelocity - FlowVelocity.ProjectOnTo(ActorRight);
 	FVector LiftDirection = FVector::CrossProduct(FlowVelocity.GetSafeNormal(), ActorRight).GetSafeNormal().GetAbs();
 	// This will mean if we add mass to an object, rotation wont care (not exactly what i want, figure out later)
-	FVector MinPitchForce = CalcAccelForce((LiftDirection * MinPitchForceAccel) * DeltaTime, Mass, DeltaTime); 
+	FVector MinPitchForce = FForce::CalcAccelForce((LiftDirection * MinPitchForceAccel) * DeltaTime, Mass, DeltaTime); 
 
 	// Add a BonusLiftPitchScale * LiftSize amount of magnitude to MinPitchForce's magnitude
 	// Account for zeroed MinPitchForce, in which case it's replaced with the lift direction (mag of 1)
@@ -694,8 +779,8 @@ FVector UBalingaMovement::FGlideArgs::CalcLiftPitch(float AimerPercentComponent,
 
 	TArray<FVector> WingLiftTorques =
 	{
-		CalcTorqueFromForceAtPos(BackLift, ActorForward * -1),
-		CalcTorqueFromForceAtPos(FrontLift, ActorForward)
+		FTorque::CalcTorqueFromForceAtPos(BackLift, ActorForward * -1),
+		FTorque::CalcTorqueFromForceAtPos(FrontLift, ActorForward * -1)
 	};
 
 	// The closer the torque is to the forward axis, the stronger it'll be 
@@ -725,7 +810,7 @@ FVector UBalingaMovement::FGlideArgs::CalcAutoAlign(FVector Drag, FVector Lift, 
 	FVector AlignToVelAxis = AlignToVelRot.GetSafeNormal();
 	DebugAutoAlignAxis = AlignToVelAxis;
 
-	FVector InputRot = CalcTorqueAccel((LiftRoll + LiftPitch), MomentInertia, DeltaTime);
+	FVector InputRot = FTorque::CalcTorqueAccel((LiftRoll + LiftPitch), MomentInertia, DeltaTime);
 	FVector InputAxis = InputRot.GetSafeNormal();
 	DebugDesiredRotAxis = InputAxis;
 
@@ -801,7 +886,7 @@ FVector UBalingaMovement::FGlideArgs::CalcRollStability(FVector LiftRoll, FVecto
 
 	FVector ForwardPart = RotToStable.ProjectOnTo(ActorForward);
 
-	FVector InputRot = CalcTorqueAccel((LiftRoll + LiftPitch), MomentInertia, DeltaTime);
+	FVector InputRot = FTorque::CalcTorqueAccel((LiftRoll + LiftPitch), MomentInertia, DeltaTime);
 	FVector InputAxis = InputRot.GetSafeNormal();
 	// Scale alignment by similarity to input so the player doesn't feel like they have to fight the auto-align for control
 	float InputScale = ForwardPart.Dot(InputAxis);
@@ -825,7 +910,7 @@ FVector UBalingaMovement::FGlideArgs::CalcAngularDamp() const
 	// Just in case DeltaTime gets too large (this func doesn't automatically use fixedDT, it shouldn't),
 	// damping should not be able to change angular vel dir past 0
 	float AngularVelocitySize = AngularVelocity.Size();
-	float AngularDampAccelSize = CalcTorqueAccel(AngularDamp, MomentInertia, DeltaTime).Size();
+	float AngularDampAccelSize = FTorque::CalcTorqueAccel(AngularDamp, MomentInertia, DeltaTime).Size();
 	if (AngularDampAccelSize > AngularVelocitySize)
 	{
 		AngularDamp *= (AngularVelocitySize / AngularDampAccelSize);
@@ -833,7 +918,6 @@ FVector UBalingaMovement::FGlideArgs::CalcAngularDamp() const
 	
 	return AngularDamp;
 }
-
 
 FVector UBalingaMovement::CalcDesiredDiffDirection(FVector FlowDirection, FVector ActorForward)
 {
@@ -849,25 +933,6 @@ FVector UBalingaMovement::CalcDesiredDiffDirection(FVector FlowDirection, FVecto
 	return DesiredDifferenceDirection;
 }
 
-float UBalingaMovement::CalcAngleOfAttack(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorForward, FVector ActorRight, FVector ActorUp)
-{
-	FVector RightIndependentVelocity = GivenVelocity - GivenVelocity.ProjectOnTo(ActorRight); // Essentially make velocity 2D
-
-	float AoaSign = CalcAoaSign(RightIndependentVelocity, GivenWingDirection, ActorRight, ActorUp);
-	float AoaDot = FMath::Abs(GivenWingDirection.Dot(RightIndependentVelocity.GetSafeNormal()));
-	return (FMath::Acos(AoaDot) * AoaSign);
-}
-float UBalingaMovement::CalcAoaSign(FVector GivenVelocity, FVector GivenWingDirection, FVector ActorRight, FVector ActorUp)
-{
-	FVector RightIndependentVelocity = GivenVelocity - GivenVelocity.ProjectOnTo(ActorRight); // Essentially make velocity 2D
-
-	FVector AoaDifference = (GivenWingDirection - RightIndependentVelocity.GetSafeNormal());
-	FVector AoaDifferenceDirection = AoaDifference.GetSafeNormal();
-	float AoaSign = FMath::Sign(AoaDifferenceDirection.Dot(ActorUp));
-
-	return AoaSign;
-}
-
 FVector UBalingaMovement::CalcWingDirection(float AimerPercentComponent, FVector ActorForward, FVector ActorRight)
 {
 	// Wing direction only changes the pitch
@@ -878,7 +943,7 @@ void UBalingaMovement::AddForceAtPos(FVector Force, FVector Position, float Delt
 {
 	AddForceToVel(Force, DeltaTime);
 
-	AddTorqueToAngularVel(CalcTorqueFromForceAtPos(Force, Position), DeltaTime);
+	AddTorqueToAngularVel(FTorque::CalcTorqueFromForceAtPos(Force, Position), DeltaTime);
 }
 
 void UBalingaMovement::AddForceToVel(FVector Force, float DeltaTime)
@@ -887,44 +952,24 @@ void UBalingaMovement::AddForceToVel(FVector Force, float DeltaTime)
 }
 FVector UBalingaMovement::CalcAccelForce(FVector GivenAcceleration, float DeltaTime) const
 {
-	return GivenAcceleration / DeltaTime * Mass;
-}
-FVector UBalingaMovement::CalcAccelForce(FVector GivenAcceleration, float GivenMass, float DeltaTime)
-{
-	return GivenAcceleration / DeltaTime * GivenMass;
+	return FForce::CalcAccelForce(GivenAcceleration, Mass, DeltaTime);
 }
 FVector UBalingaMovement::CalcForceAccel(FVector Force, float DeltaTime) const
 {
-	return CalcForceAccel(Force, Mass, DeltaTime);
-}
-FVector UBalingaMovement::CalcForceAccel(FVector Force, float GivenMass, float DeltaTime)
-{
-	return Force / GivenMass * DeltaTime;
+	return FForce::CalcForceAccel(Force, Mass, DeltaTime);
 }
 
 void UBalingaMovement::AddTorqueToAngularVel(FVector Torque, float DeltaTime)
 {
 	AngularVelocity += CalcTorqueAccel(Torque, DeltaTime);
 }
-FVector UBalingaMovement::CalcTorqueFromForceAtPos(FVector Force, FVector Position)
-{	
-	return Force.Cross(Position);
-}
 FVector UBalingaMovement::CalcAccelTorque(FVector GivenAcceleration, float DeltaTime) const
 {
-	return CalcAccelTorque(GivenAcceleration, MomentInertia, DeltaTime);
-}
-FVector UBalingaMovement::CalcAccelTorque(FVector GivenAcceleration, float GivenMomentInertia, float DeltaTime)
-{
-	return GivenAcceleration / DeltaTime * GivenMomentInertia;
+	return FTorque::CalcAccelTorque(GivenAcceleration, MomentInertia, DeltaTime);
 }
 FVector UBalingaMovement::CalcTorqueAccel(FVector Torque, float DeltaTime) const
 {
-	return CalcTorqueAccel(Torque, MomentInertia, DeltaTime);
-}
-FVector UBalingaMovement::CalcTorqueAccel(FVector Torque, float GivenMomentInertia, float DeltaTime)
-{
-	return Torque / GivenMomentInertia * DeltaTime;
+	return FTorque::CalcTorqueAccel(Torque, MomentInertia, DeltaTime);
 }
 
 FVector UBalingaMovement::CombineRotationVectors(TArray<FVector> Vectors)
@@ -941,7 +986,7 @@ FVector UBalingaMovement::CombineRotationVectors(TArray<FVector> Vectors)
 
 float UBalingaMovement::CalcLimitedSpeedScale(FVector GivenVelocity, FVector NewVelocity, float GivenMaxSpeed)
 {
-	// Multiplies the speed change by the maximum speed change, with some exceptions, to linearly limit speed to a maximum 
+	// Multiplies the speed change by the maximum speed change divided by speed, with some exceptions, to linearly limit speed to a maximum 
 	// Max speed change gets smaller as we reach max speed so speed change gets smaller as we reach max speed too
 	// Speed becomes harder to increase as max speed change reaches 0, at which point we can't increase speed anymore
 

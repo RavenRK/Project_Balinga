@@ -1,0 +1,25 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "ToyJoystick",
+	"Description": "A joystick with a 2D position, and methods to modify it and its modifiers..",
+	"Category": "",
+	"CreatedBy": "Prankalanka",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
+	{
+		"Name": "ToyJoystick",
+		"Type": "Runtime",
+		"LoadingPhase": "Default"
+	}],
+	"Plugins": [
+	]
+}
+

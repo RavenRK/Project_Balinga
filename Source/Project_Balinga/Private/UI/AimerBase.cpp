@@ -24,12 +24,13 @@ void UAimerBase::FollowMouseVelocity(float DeltaSeconds)
 
 		Velocity /= ScreenScale;
 
-		Velocity.Y *= -1;
+		Velocity.Y *= -1; 
 
 		FVector2D Accel = Velocity - LastVelocity;
 
 		FMath::CriticallyDampedSmoothing(Velocity.X, Accel.X, LastVelocity.X, Accel.X * 1, DeltaSeconds * 1000, XSmoothTime);
 		FMath::CriticallyDampedSmoothing(Velocity.Y, Accel.Y, LastVelocity.Y, Accel.Y * 1, DeltaSeconds * 1000, YSmoothTime);
+
 
 		LastVelocity = Velocity;
 
@@ -40,6 +41,11 @@ void UAimerBase::FollowMouseVelocity(float DeltaSeconds)
 		FVector2D NextPosition = (DesiredNextPosition.Size() > BorderRadius) ? DesiredNextPosition.GetSafeNormal() * BorderRadius : DesiredNextPosition;
 
 		AimerSlot->SetPosition(NextPosition);
+
+		if (AimerSlot->GetPosition().Size() < 1)
+		{
+			AimerSlot->SetPosition(FVector2D::ZeroVector);
+		}
 	}
 }
 
