@@ -79,15 +79,45 @@ void UBalingaMovement::EnterGlide()
 
 	AngularVelocity = FVector::ZeroVector;
 
-	FWing* RightWing = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
-	FWing* LeftWing = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+
+	FWing* RightWing11 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+	FWing* RightWing12 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+
+	FWing* RightWing21 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+	FWing* RightWing22 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+
+	FWing* RightWing31 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+	FWing* RightWing32 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+
+	FWing* RightWing41 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+	FWing* RightWing42 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, 1);
+
+	FWing* LeftWing11 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+	FWing* LeftWing12 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+
+	FWing* LeftWing21 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+	FWing* LeftWing22 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+
+	FWing* LeftWing31 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+	FWing* LeftWing32 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+
+	FWing* LeftWing41 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+	FWing* LeftWing42 = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, WingChord, 1, WingSpan, -1);
+
+
 	FWing* Tail = new FWing(CriticalAoa, DragCoefficientAoaScale, WingEfficieny, TailChord, -1, TailSpan, 0);
 
 	FVector ActorRight = CharacterOwner->GetActorRightVector();
 	FVector ActorForward = CharacterOwner->GetActorForwardVector();
 	FVector ActorUp = CharacterOwner->GetActorUpVector();
 
-	AeroStruct = new FAeroStruct({ RightWing, LeftWing, Tail }, { FVector(0.25, 2, 0), FVector(0.25, -2, 0), FVector(-2, 0, 0) }, ActorForward, ActorRight, ActorUp);
+	AeroStruct = new FAeroStruct(
+		{RightWing11, RightWing12, RightWing21,RightWing22, RightWing31, RightWing32, RightWing41, RightWing42,
+			LeftWing11, LeftWing12, LeftWing21, LeftWing22, LeftWing31, LeftWing32, LeftWing41, LeftWing42, Tail}, {
+			FVector(0.125, 0.5, 0), FVector(0.25, 0.5, 0), FVector(0.125, 1, 0), FVector(0.25, 1, 0), FVector(0.125, 1.5, 0), FVector(0.25, 1.5, 0), FVector(0.125, 2, 0), FVector(0.25, 2, 0),
+			FVector(0.125, -0.5, 0), FVector(0.25, -0.5, 0), FVector(0.125, -1, 0), FVector(0.25, -1, 0), FVector(0.125, -1.5, 0), FVector(0.25, -1.5, 0), FVector(0.125, -2, 0), FVector(0.25, -2, 0),
+			FVector(-2, 0, 0)
+		}, ActorForward, ActorRight, ActorUp);
 
 	FVector OldLocation = UpdatedComponent->GetComponentLocation();
 	AeroStruct->SetPos(OldLocation);
@@ -231,18 +261,79 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 
 		AeroStruct->SetOrientation(ActorForward, ActorRight, ActorUp);
 
+		// AeroStruct->AeroObjects[0]->SetIncidence(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[1]->SetIncidence(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[2]->SetIncidence(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[3]->SetIncidence(FMath::DegreesToRadians(-10));
+		//
+		// AeroStruct->AeroObjects[4]->SetIncidence(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[5]->SetIncidence(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[6]->SetIncidence(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[7]->SetIncidence(FMath::DegreesToRadians(-10));
+
 		// if (ThrustThisFrame.Size() == 0)
 		{
-			AeroStruct->SetObjectAxisOffsets({ (FMath::Sign(AimerPercentPos.X) == 1)? 1 : 0}, { {float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(AimerPercentPos.X) * 1), 0, 0} });
+			TArray<int> ModifiedWingIndices = (FMath::Sign(AimerPercentPos.X) == 1)? TArray<int>{8, 9, 10, 11, 12, 13, 14, 15} : TArray<int>{0, 1, 2, 3, 4, 5, 6, 7};
+			AeroStruct->SetObjectAxisOffsets(ModifiedWingIndices, {
+				                                 {
+					                                 float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(
+						                                 AimerPercentPos.X) * 1),
+					                                 0, 0
+				                                 },
+				                                 {
+					                                 float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(
+						                                 AimerPercentPos.X) * 1),
+					                                 0, 0
+				                                 },
+				                                 {
+					                                 float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(
+						                                 AimerPercentPos.X) * 1),
+					                                 0, 0
+				                                 },
+				                                 {
+					                                 float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(
+						                                 AimerPercentPos.X) * 1),
+					                                 0, 0
+				                                 },
+												 {
+													 float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(
+														 AimerPercentPos.X) * 1),
+													 0, 0
+												 },
+												 {
+													 float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(
+														 AimerPercentPos.X) * 1),
+													 0, 0
+												 },
+												 {
+													 float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(
+														 AimerPercentPos.X) * 1),
+													 0, 0
+												 },
+												 {
+													 float(FMath::DegreesToRadians(MaxWingAoaOffset) * FMath::Abs(
+														 AimerPercentPos.X) * 1),
+													 0, 0
+												 }
+			                                 });
 
-			AeroStruct->SetObjectAxisOffsets({ 2 }, { {float (FMath::DegreesToRadians(MaxWingAoaOffset) * AimerPercentPos.Y * -1), 0, 0} });
+			AeroStruct->SetObjectAxisOffsets({ 16 }, { {float (FMath::DegreesToRadians(MaxWingAoaOffset) * AimerPercentPos.Y * -1), 0, 0} });
 		}
 
 		// AeroStruct->AeroObjects[0]->SetHedral(FMath::DegreesToRadians(-10));
 		// AeroStruct->AeroObjects[1]->SetHedral(FMath::DegreesToRadians(10));
 
-		AeroStruct->AeroObjects[0]->SetSweep(FMath::DegreesToRadians(-10));
-		AeroStruct->AeroObjects[1]->SetSweep(FMath::DegreesToRadians(10));
+		// AeroStruct->AeroObjects[0]->SetSweep(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[1]->SetSweep(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[2]->SetSweep(FMath::DegreesToRadians(-10));
+		// AeroStruct->AeroObjects[3]->SetSweep(FMath::DegreesToRadians(-10));
+		//
+		// AeroStruct->AeroObjects[4]->SetSweep(FMath::DegreesToRadians(10));
+		// AeroStruct->AeroObjects[5]->SetSweep(FMath::DegreesToRadians(10));
+		// AeroStruct->AeroObjects[6]->SetSweep(FMath::DegreesToRadians(10));
+		// AeroStruct->AeroObjects[7]->SetSweep(FMath::DegreesToRadians(10));
+
+
 
 		AeroStruct->UpdateObjectPosAndVelFromPosition();
 
@@ -255,7 +346,7 @@ void UBalingaMovement::PhysGlide(float DeltaTime, int32 Iterations)
 		FVector DragTorque = FVector::ZeroVector;
 		FVector InducedDragTorque = FVector::ZeroVector;
 
-		for (int i = 0; i < 3; i++)
+		for (int i = 0; i < 17; i++)
 		{
 			Lift += ForcesAndTorquesAtAeroObjects[i][0];
 			Drag += ForcesAndTorquesAtAeroObjects[i][1];

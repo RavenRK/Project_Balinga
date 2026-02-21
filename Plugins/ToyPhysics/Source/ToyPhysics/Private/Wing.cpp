@@ -28,7 +28,7 @@ TArray<FVector> FWing::CalcForces(FVector WindVelocity, FVector BodyForward, FVe
 
 float FWing::CalcDragMagnitude(float DragCoeff, FVector FlowVelocity) const
 {
-	return FAeroObject::CalcDragMagnitude(DragCoeff, FlowVelocity) * CalcArea();
+	return FAeroObject::CalcDragMagnitude(DragCoeff, FlowVelocity) * CalcArea() / 10;
 }
 
 float FWing::CalcLiftMagnitude(float LiftCoeff, FVector FlowVelocity, FVector Right) const
@@ -61,7 +61,7 @@ float FWing::CalcDragCoeff(float Aoa) const
 
 float FWing::CalcInducedDragMagnitude(float InducedDragCoeff, FVector FlowVelocity) const
 {
-	return FAeroObject::CalcInducedDragMagnitude(InducedDragCoeff, FlowVelocity) * CalcArea() / 2;
+	return FAeroObject::CalcInducedDragMagnitude(InducedDragCoeff, FlowVelocity) * CalcArea() / 10;
 }
 
 float FWing::CalcInducedDragCoeff(float LiftCoeff, float AspectRatio)
